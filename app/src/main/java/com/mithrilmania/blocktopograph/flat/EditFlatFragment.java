@@ -2,18 +2,26 @@ package com.mithrilmania.blocktopograph.flat;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.res.AssetManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.databinding.DataBindingUtil;
+import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+
 import com.google.android.material.snackbar.Snackbar;
 import com.mithrilmania.blocktopograph.Log;
 import com.mithrilmania.blocktopograph.R;
+import com.mithrilmania.blocktopograph.block.ListingBlock;
 import com.mithrilmania.blocktopograph.databinding.FragLayersBinding;
 import com.mithrilmania.blocktopograph.databinding.ItemWorldLayerBinding;
-import com.mithrilmania.blocktopograph.map.Block;
 import com.mithrilmania.blocktopograph.util.UiUtil;
 import com.woxthebox.draglistview.DragItemAdapter;
 import com.woxthebox.draglistview.DragListView;
@@ -25,20 +33,13 @@ import java.lang.ref.WeakReference;
 import java.util.LinkedList;
 import java.util.List;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
-import androidx.databinding.DataBindingUtil;
-import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
-
 public final class EditFlatFragment extends Fragment {
 
-    public static final int REQUEST_CODE_EDIT_LAYER = 2013;
-    public static final String EXTRA_KEY_LIST_INDEX = "index";
-    public static final String EXTRA_KEY_LIST_IS_ADD = "isAdd";
-    public static final String EXTRA_KEY_LIST_LAYER = "layer";
-    public static final String EXTRA_KEY_LIST_EXISTING_SUM = "existingSum";
+    static final String EXTRA_KEY_LIST_INDEX = "index";
+    static final String EXTRA_KEY_LIST_IS_ADD = "isAdd";
+    static final String EXTRA_KEY_LIST_LAYER = "layer";
+    static final String EXTRA_KEY_LIST_EXISTING_SUM = "existingSum";
+    private static final int REQUEST_CODE_EDIT_LAYER = 2013;
     private FragLayersBinding mBinding;
     private MeowAdapter mMeowAdapter;
 
@@ -64,20 +65,17 @@ public final class EditFlatFragment extends Fragment {
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        switch (requestCode) {
-            case REQUEST_CODE_EDIT_LAYER: {
-                if (resultCode != Activity.RESULT_OK) return;
-                int index = data.getIntExtra(EXTRA_KEY_LIST_INDEX, 0);
-                Serializable ser = data.getSerializableExtra(EXTRA_KEY_LIST_LAYER);
-                assert ser instanceof Layer;
-                Layer layer = (Layer) ser;
-                if (data.getBooleanExtra(EXTRA_KEY_LIST_IS_ADD, true)) {
-                    mMeowAdapter.insert(index + 1, layer);
-                } else {
-                    mMeowAdapter.change(index, layer);
-                }
-                return;
+        if (requestCode == REQUEST_CODE_EDIT_LAYER) {
+            if (resultCode != Activity.RESULT_OK) return;
+            int index = data.getIntExtra(EXTRA_KEY_LIST_INDEX, 0);
+            Serializable ser = data.getSerializableExtra(EXTRA_KEY_LIST_LAYER);
+            Layer layer = (Layer) ser;
+            if (data.getBooleanExtra(EXTRA_KEY_LIST_IS_ADD, true)) {
+                mMeowAdapter.insert(index + 1, layer);
+            } else {
+                mMeowAdapter.change(index, layer);
             }
+            return;
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
@@ -86,10 +84,65 @@ public final class EditFlatFragment extends Fragment {
         return mMeowAdapter.getItemList();
     }
 
+    private static class LoadTask extends AsyncTask<Void, Void, Void> {
+
+        private final WeakReference<EditFlatFragment> thiz;
+        private AlertDialog mWaitDialog;
+
+        private LoadTask(EditFlatFragment thiz) {
+            this.thiz = new WeakReference<>(thiz);
+        }
+
+        @Override
+        protected void onPreExecute() {
+            Activity activity = thiz.get().getActivity();
+            if (activity == null) return;
+            mWaitDialog = UiUtil.buildProgressWaitDialog(activity, 0, null);
+            mWaitDialog.show();
+        }
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            try {
+                Activity activity = thiz.get().getActivity();
+                if (activity == null) return null;
+                ListingBlock.B_1_STONE.getIcon(activity.getAssets());
+            } catch (Exception e) {
+                Log.d(this, e);
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            EditFlatFragment thiz = this.thiz.get();
+            //If the activity quit nothing needs to be done.
+            if (thiz == null) return;
+            try {
+                DragListView listView = thiz.mBinding.list;
+                thiz.mMeowAdapter = thiz.new MeowAdapter(thiz.getResources().getAssets());
+                listView.setLayoutManager(new LinearLayoutManager(thiz.getActivity()));
+                listView.setCanDragHorizontally(false);
+                listView.setAdapter(thiz.mMeowAdapter, false);
+                listView.setSwipeListener(thiz.mMeowAdapter);
+                thiz.mMeowAdapter.loadDefault();
+            } catch (Exception e) {
+                Log.d(this, e);
+                Activity activity = thiz.getActivity();
+                if (activity != null) UiUtil.toastError(activity);
+            }
+            mWaitDialog.dismiss();
+        }
+    }
+
     private class MeowAdapter extends DragItemAdapter<Layer, MeowAdapter.MeowHolder> implements ListSwipeHelper.OnSwipeListener {
 
-        MeowAdapter() {
+        @NonNull
+        private AssetManager assMan;
+
+        MeowAdapter(@NonNull AssetManager assMan) {
             setItemList(new LinkedList<>());
+            this.assMan = assMan;
         }
 
         @Override
@@ -100,24 +153,22 @@ public final class EditFlatFragment extends Fragment {
         }
 
         void loadDefault() {
-            Layer layer = new Layer(Block.B_7_0_BEDROCK, 1);
+            Layer layer = new Layer(ListingBlock.B_7_BEDROCK, 1);
             addItem(0, layer);
-            layer = new Layer(Block.B_3_0_DIRT, 29);
+            layer = new Layer(ListingBlock.B_3_DIRT, 29);
             addItem(0, layer);
-            layer = new Layer(Block.B_2_0_GRASS, 1);
+            layer = new Layer(ListingBlock.B_2_GRASS, 1);
             addItem(0, layer);
-            layer = new Layer(Block.B_31_2_TALLGRASS_GRASS, 1);
+            layer = new Layer(ListingBlock.B_31_TALLGRASS, 1);
             addItem(0, layer);
         }
 
         void insert(int index, Layer layer) {
-            assert index <= mItemList.size();
             mItemList.add(index, layer);
             notifyItemInserted(index);
         }
 
         void change(int index, Layer layer) {
-            assert index < mItemList.size();
             mItemList.set(index, layer);
             notifyItemChanged(index, layer);
         }
@@ -154,7 +205,7 @@ public final class EditFlatFragment extends Fragment {
             super.onBindViewHolder(holder, position);
             Layer layer = mItemList.get(position);
             holder.binding.setLayer(layer);
-            holder.binding.icon.setImageBitmap(layer.block.bitmap);
+            holder.binding.icon.setImageBitmap(layer.block.getIcon(assMan));
         }
 
         @Override
@@ -167,7 +218,6 @@ public final class EditFlatFragment extends Fragment {
             if (!(tag instanceof WeakReference)) return null;
             WeakReference ref = (WeakReference) tag;
             Object mho = ref.get();
-            assert mho instanceof MeowHolder;
             return (MeowHolder) mho;
         }
 
@@ -205,57 +255,6 @@ public final class EditFlatFragment extends Fragment {
                 this.binding = binding;
                 binding.root.setSupportedSwipeDirection(ListSwipeItem.SwipeDirection.LEFT);
             }
-        }
-    }
-
-    private static class LoadTask extends AsyncTask<Void, Void, Void> {
-
-        private final WeakReference<EditFlatFragment> thiz;
-        private AlertDialog mWaitDialog;
-
-        private LoadTask(EditFlatFragment thiz) {
-            this.thiz = new WeakReference<>(thiz);
-        }
-
-        @Override
-        protected void onPreExecute() {
-            Activity activity = thiz.get().getActivity();
-            if (activity == null) return;
-            mWaitDialog = UiUtil.buildProgressWaitDialog(activity, 0, null);
-            mWaitDialog.show();
-        }
-
-        @Override
-        protected Void doInBackground(Void... voids) {
-            try {
-                Activity activity = thiz.get().getActivity();
-                if (activity == null) return null;
-                Block.loadBitmaps(activity.getAssets());
-            } catch (Exception e) {
-                Log.d(this, e);
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            EditFlatFragment thiz = this.thiz.get();
-            //If the activity quit nothing needs to be done.
-            if (thiz == null) return;
-            try {
-                DragListView listView = thiz.mBinding.list;
-                thiz.mMeowAdapter = thiz.new MeowAdapter();
-                listView.setLayoutManager(new LinearLayoutManager(thiz.getActivity()));
-                listView.setCanDragHorizontally(false);
-                listView.setAdapter(thiz.mMeowAdapter, false);
-                listView.setSwipeListener(thiz.mMeowAdapter);
-                thiz.mMeowAdapter.loadDefault();
-            } catch (Exception e) {
-                Log.d(this, e);
-                Activity activity = thiz.getActivity();
-                if (activity != null) UiUtil.toastError(activity);
-            }
-            mWaitDialog.dismiss();
         }
     }
 }

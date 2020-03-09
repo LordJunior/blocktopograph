@@ -2,14 +2,14 @@ package com.mithrilmania.blocktopograph.flat;
 
 import androidx.annotation.Nullable;
 
-import com.mithrilmania.blocktopograph.map.Block;
+import com.mithrilmania.blocktopograph.block.ListingBlock;
 
 import java.io.Serializable;
 
 public final class Layer implements Serializable {
 
     private static long counter = 0;
-    public Block block;
+    public ListingBlock block;
     public int amount;
     public long uid;
 
@@ -23,21 +23,13 @@ public final class Layer implements Serializable {
     }
 
     public Layer() {
-        block = Block.B_0_0_AIR;
+        block = ListingBlock.B_0_AIR;
         amount = 1;
         genUid();
     }
 
-    Layer(Block block, int amount) {
+    Layer(ListingBlock block, int amount) {
         this.block = block;
-        this.amount = amount;
-        genUid();
-    }
-
-    public Layer(int legacyId, int amount) {
-        Block block = Block.getBlockWithLegacyId(legacyId);
-        if (block == null) this.block = Block.B_0_0_AIR;
-        else this.block = block;
         this.amount = amount;
         genUid();
     }

@@ -5,17 +5,27 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
+import androidx.annotation.UiThread;
+import androidx.appcompat.app.AlertDialog;
+import androidx.databinding.DataBindingUtil;
+import androidx.fragment.app.DialogFragment;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.DataSource;
@@ -27,67 +37,53 @@ import com.mithrilmania.blocktopograph.R;
 import com.mithrilmania.blocktopograph.World;
 import com.mithrilmania.blocktopograph.databinding.FragPicerBinding;
 import com.mithrilmania.blocktopograph.map.Dimension;
+import com.mithrilmania.blocktopograph.map.OpenLongPressMenuHandler;
 import com.mithrilmania.blocktopograph.util.ConvertUtil;
 import com.mithrilmania.blocktopograph.util.UiUtil;
-import com.mithrilmania.blocktopograph.util.math.DimensionVector3;
-
-import org.jetbrains.annotations.Contract;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.StringRes;
-import androidx.annotation.UiThread;
-import androidx.appcompat.app.AlertDialog;
-import androidx.databinding.DataBindingUtil;
-import androidx.fragment.app.DialogFragment;
-
 public final class PicerFragment extends DialogFragment {
 
+    public static final int MAX_LENGTH = 2048;
+    public static final int MAX_AREA = 64 * 64 * 256;
+    public static final int MAX_SCALE = 32;
     private FragPicerBinding mBinding;
-    private int stage;
-    public static final int MAX_PIXELS = 64 * 1024 * 1024 / 16;
-    public static final int MAX_PIXELS_32BIT = MAX_PIXELS / 2;
+    Rect mRange;
 
     World mWorld;
     Dimension mDimension;
-    int mFindX, mFindZ;
     AsyncTask mOngoingTask;
+    private int stage = 0;
     GenerateThread mOngoingThread;
+    private OpenLongPressMenuHandler mOpenLongPressMenuHandler;
 
-    public static PicerFragment create(@NotNull World world, @NotNull DimensionVector3<Integer> location) {
+    public static PicerFragment create(@NonNull World world, @NonNull Dimension dimension,
+                                       @Nullable Rect range, @Nullable OpenLongPressMenuHandler openLongPressMenuHandler) {
         PicerFragment ret = new PicerFragment();
         ret.mWorld = world;
-        ret.mDimension = location.dimension;
-        ret.mFindX = location.x;
-        ret.mFindZ = location.z;
+        ret.mDimension = dimension;
+        ret.mRange = range;
+        ret.mOpenLongPressMenuHandler = openLongPressMenuHandler;
         return ret;
     }
 
-//    @Override
-//    public void onCreate(@Nullable Bundle savedInstanceState) {
-//        super.onCreate(savedInstanceState);
-//        setStyle();
-//    }
+    private static boolean rangeCheck(@NonNull Rect rect) {
+        int width = rect.right - rect.left;
+        int height = rect.bottom - rect.top;
+        return width <= MAX_LENGTH && height <= MAX_LENGTH && width * height <= MAX_AREA;
+    }
 
-    @NotNull
+    @NonNull
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         mBinding = DataBindingUtil.inflate(inflater, R.layout.frag_picer,
                 container, false);
-        Dialog dialog = getDialog();
-        assert dialog != null;
-        dialog.setCanceledOnTouchOutside(false);
-        dialog.setTitle(R.string.picer_title);
         mBinding.finalButton.setOnClickListener(this::onClickFinalButton);
-        View root = mBinding.getRoot();
-        root.post(() -> mOngoingTask = new AnalyzeTask(this).execute());
         mBinding.scaleSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
-                mBinding.setScale(getScaleFromBarValue(i));
+                mBinding.setScale(i + 1);
             }
 
             @Override
@@ -98,28 +94,34 @@ public final class PicerFragment extends DialogFragment {
             public void onStopTrackingTouch(SeekBar seekBar) {
             }
         });
-        stage = 0;
+        View root = mBinding.getRoot();
+        Dialog dialog = getDialog();
+        if (dialog instanceof AlertDialog)
+            ((AlertDialog) dialog).setView(root);
+        if (mRange == null)
+            root.post(() -> mOngoingTask = new AnalyzeTask(this).execute());
+        else goToScalePhase();
         return root;
     }
 
+    @NonNull
     @Override
-    public void onDismiss(@NotNull DialogInterface dialog) {
+    public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
+        AlertDialog dialog = new AlertDialog.Builder(new ContextThemeWrapper(requireContext(), R.style.AppTheme_Dialog))
+                .setTitle(R.string.picer_title)
+                .create();
+        dialog.setCanceledOnTouchOutside(false);
+        return dialog;
+    }
+
+    @Override
+    public void onDismiss(@NonNull DialogInterface dialog) {
         super.onDismiss(dialog);
         if (mOngoingTask != null) mOngoingTask.cancel(true);
         if (mOngoingThread != null) mOngoingThread.cancel();
     }
 
     // Result callbacks from AnalyzeTask.
-
-    @UiThread
-    void showWarningForWrongChunks() {
-        mBinding.warningWrongChunks.setVisibility(View.VISIBLE);
-    }
-
-    @UiThread
-    void showWarningForOldChunks() {
-        mBinding.warningOldChunks.setVisibility(View.VISIBLE);
-    }
 
     @UiThread
     void showFailureDialogAndDismiss(@StringRes int resId) {
@@ -140,55 +142,102 @@ public final class PicerFragment extends DialogFragment {
         dismiss();
     }
 
+    private void goToScalePhase() {
+        Activity activity = getActivity();
+        if (activity == null) return;
+        mBinding.selectCase.setVisibility(View.VISIBLE);
+        int w = mRange.right - mRange.left;
+        int h = mRange.bottom - mRange.top;
+        if (w <= 0 || h <= 0) {
+            dismiss();
+            return;
+        }
+        int len = w > h ? w : h;
+        int maxScale = MAX_LENGTH / len;
+        len = w * h;
+        w = MAX_AREA / len;
+        if (w < maxScale) maxScale = w;
+        if (maxScale <= 0) {
+            new AlertDialog.Builder(activity)
+                    .setTitle(R.string.map_picer_selection_too_large)
+                    .setMessage(getString(R.string.map_picer_selection_too_large_detail, MAX_LENGTH, MAX_AREA))
+                    .setPositiveButton(android.R.string.ok, null)
+                    .create()
+                    .show();
+            dismiss();
+            return;
+        } else if (maxScale == 1) {
+            mBinding.scaleBox.setVisibility(View.GONE);
+            mBinding.scaleNot.setVisibility(View.VISIBLE);
+        } else {
+            if (MAX_SCALE < maxScale) maxScale = MAX_SCALE;
+            mBinding.scaleBox.setVisibility(View.VISIBLE);
+            mBinding.scaleNot.setVisibility(View.GONE);
+            mBinding.scaleSeek.setMax(maxScale - 1);
+            mBinding.scaleSeek.setProgress(maxScale - 1);
+        }
+        stage = 1;
+        mBinding.finalButton.setVisibility(View.VISIBLE);
+        mBinding.finalButton.setText(R.string.picer_btn_generate);
+// Minimal 16x16 px per chunk.
+//        int size = area.calculateArea() * 256;
+//
+//        // Oops.
+//        if (size > MAX_PIXELS) {
+//            showFailureDialogAndDismiss(R.string.picer_failed_too_large);
+//            return;
+//        }
+//
+//        // How many levels could we scale.
+//        int levels = 1;
+//        for (int m = size; m <= MAX_PIXELS / 2; levels++) m *= 4;
+//
+//        if (levels == 1) {
+//            // Cannot scale at all.
+//            mBinding.scaleBox.setVisibility(View.GONE);
+//            mBinding.scaleNot.setVisibility(View.VISIBLE);
+//            mBinding.scaleSeek.setMax(1);
+//            mBinding.scaleSeek.setProgress(1);
+//        } else {
+//            mBinding.scaleSeek.setMax(levels - 1);
+//            mBinding.scaleSeek.setProgress(levels - 1);
+//        }
+//        mBinding.selectCase.setVisibility(View.VISIBLE);
+//        mBinding.setArea(area);
+//
+//        mBinding.finalButton.setVisibility(View.VISIBLE);
+//        mBinding.finalButton.setText(R.string.picer_btn_generate);
+    }
+
     @UiThread
-    private void onClickFinalButton(@NotNull View view) {
+    private void onClickFinalButton(@NonNull View view) {
         switch (stage) {
-            case 0:
+            case 1:
                 onClickGenerate();
                 break;
-            case 1:
+            case 2:
                 onClickSave(view);
                 break;
         }
     }
 
-    @Contract(pure = true)
-    static private int getScaleFromBarValue(int barValue) {
-        int scale = 1;
-        for (int i1 = 1; i1 <= barValue; i1++) scale *= 2;
-        return scale;
-    }
-
     @UiThread
-    void onAnalyzeDone(@NotNull Area area) {
-        // Minimal 16x16 px per chunk.
-        int size = area.calculateArea() * 256;
+    void onAnalyzeDone(@NonNull Rect rect) {
 
-        // Oops.
-        if (size > MAX_PIXELS) {
-            showFailureDialogAndDismiss(R.string.picer_failed_too_large);
-            return;
-        }
+        Activity activity = getActivity();
+        if (activity == null) return;
 
-        // How many levels could we scale.
-        int levels = 1;
-        for (int m = size; m <= MAX_PIXELS / 2; levels++) m *= 4;
-
-        if (levels == 1) {
-            // Cannot scale at all.
-            mBinding.scaleBox.setVisibility(View.GONE);
-            mBinding.scaleNot.setVisibility(View.VISIBLE);
-            mBinding.scaleSeek.setMax(1);
-            mBinding.scaleSeek.setProgress(1);
+        if (rangeCheck(rect)) {
+            mRange = rect;
+            goToScalePhase();
         } else {
-            mBinding.scaleSeek.setMax(levels - 1);
-            mBinding.scaleSeek.setProgress(levels - 1);
+            new AlertDialog.Builder(activity)
+                    .setTitle(R.string.map_picer_world_too_large)
+                    .setMessage(R.string.map_picer_use_selection_instead)
+                    .setPositiveButton(android.R.string.ok, (dia, i) -> mOpenLongPressMenuHandler.open())
+                    .create().show();
+            dismiss();
         }
-        mBinding.selectCase.setVisibility(View.VISIBLE);
-        mBinding.setArea(area);
-
-        mBinding.finalButton.setVisibility(View.VISIBLE);
-        mBinding.finalButton.setText(R.string.picer_btn_generate);
     }
 
     // Callback from .
@@ -198,13 +247,7 @@ public final class PicerFragment extends DialogFragment {
         Activity activity = getActivity();
         if (activity == null) return;
 
-        Area area = mBinding.getArea();
-        int scale = getScaleFromBarValue(mBinding.scaleSeek.getProgress());
-        Bitmap.Config config;
-        if (area.calculateArea() * 256 * scale * scale > MAX_PIXELS_32BIT)
-            config = Bitmap.Config.ARGB_4444;
-        else config = Bitmap.Config.ARGB_8888;
-
+        int scale = mBinding.scaleSeek.getProgress() + 1;
         AlertDialog dialog = UiUtil.buildProgressWaitDialog(
                 activity, R.string.picer_progress_generating, dialogInterface -> dismiss());
         dialog.show();
@@ -212,7 +255,7 @@ public final class PicerFragment extends DialogFragment {
         mBinding.finalButton.setVisibility(View.GONE);
         mBinding.selectCase.setVisibility(View.GONE);
 
-        mOngoingThread = new GenerateThread(this, area, scale, config, dialog);
+        mOngoingThread = new GenerateThread(this, mRange, scale, Bitmap.Config.ARGB_8888, dialog);
         mOngoingThread.start();
     }
 
@@ -229,7 +272,7 @@ public final class PicerFragment extends DialogFragment {
             return;
         }
 
-        stage = 1;
+        stage = 2;
         mBinding.finalButton.setVisibility(View.VISIBLE);
         mBinding.finalButton.setText(R.string.picer_save);
         mBinding.finalButton.setTag(bitmap);
@@ -253,7 +296,7 @@ public final class PicerFragment extends DialogFragment {
     }
 
     @UiThread
-    private void onClickSave(@NotNull View view) {
+    private void onClickSave(@NonNull View view) {
         Object o = view.getTag();
         if (!(o instanceof Bitmap)) return;
         Bitmap bmp = (Bitmap) o;
@@ -281,7 +324,7 @@ public final class PicerFragment extends DialogFragment {
                         shareIntent.setAction(Intent.ACTION_SEND);
                         shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(file));
                         shareIntent.setType("image/jpeg");
-                        v.getContext().startActivity(
+                        getActivity().startActivity(
                                 Intent.createChooser(shareIntent,
                                         v.getContext().getString(R.string.picer_share_title)));
                     });

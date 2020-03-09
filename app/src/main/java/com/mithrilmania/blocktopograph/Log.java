@@ -3,13 +3,15 @@ package com.mithrilmania.blocktopograph;
 import android.content.Context;
 import android.os.Bundle;
 
+import androidx.annotation.NonNull;
+
 import com.crashlytics.android.Crashlytics;
 import com.google.firebase.analytics.FirebaseAnalytics;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
-import androidx.annotation.NonNull;
+import io.fabric.sdk.android.Fabric;
 
 public class Log {
 
@@ -23,11 +25,28 @@ public class Log {
 
     private static FirebaseAnalytics mFirebaseAnalytics;
 
+    private static PrintWriter mFileLogger;
+
+    private static boolean mIsFirebaseAnalyticsEnabled = false;
+    private static boolean mIsCrashlyticsEnabled = false;
+
     private static String concat(@NonNull Object caller, @NonNull String msg) {
         Class clazz;
         if (caller instanceof Class) clazz = (Class) caller;
         else clazz = caller.getClass();
         return clazz.getSimpleName() + ": " + msg;
+    }
+
+    public static void enableFirebaseAnalytics(@NonNull Context context) {
+        getFirebaseAnalytics(context).setAnalyticsCollectionEnabled(true);
+        mIsFirebaseAnalyticsEnabled = true;
+    }
+
+    public static void enableCrashlytics(@NonNull Context context) {
+        if (!BuildConfig.DEBUG) {
+            Fabric.with(context, new Crashlytics());
+            mIsCrashlyticsEnabled = true;
+        }
     }
 
     public static void d(@NonNull Object caller, @NonNull String msg) {
@@ -42,7 +61,7 @@ public class Log {
     }
 
     public static void e(@NonNull Object caller, @NonNull String msg) {
-        if (!BuildConfig.DEBUG)
+        if (mIsCrashlyticsEnabled)
             Crashlytics.log(android.util.Log.DEBUG, LOG_TAG, concat(caller, msg));
     }
 
@@ -51,7 +70,7 @@ public class Log {
         PrintWriter pw = new PrintWriter(sw);
         throwable.printStackTrace(pw);
         android.util.Log.e(LOG_TAG, concat(caller, sw.toString()));
-        if (!BuildConfig.DEBUG) Crashlytics.logException(throwable);
+        if (mIsCrashlyticsEnabled) Crashlytics.logException(throwable);
     }
 
     private synchronized static FirebaseAnalytics getFirebaseAnalytics(@NonNull Context context) {
@@ -66,11 +85,13 @@ public class Log {
     }
 
     public static void logFirebaseEvent(@NonNull Context context, @NonNull CustomFirebaseEvent firebaseEvent) {
-        getFirebaseAnalytics(context).logEvent(firebaseEvent.eventID, new Bundle());
+        if (mIsFirebaseAnalyticsEnabled)
+            getFirebaseAnalytics(context).logEvent(firebaseEvent.eventID, new Bundle());
     }
 
     public static void logFirebaseEvent(@NonNull Context context, @NonNull CustomFirebaseEvent firebaseEvent, @NonNull Bundle eventContent) {
-        getFirebaseAnalytics(context).logEvent(firebaseEvent.eventID, eventContent);
+        if (mIsFirebaseAnalyticsEnabled)
+            getFirebaseAnalytics(context).logEvent(firebaseEvent.eventID, eventContent);
     }
 
     // Firebase events, these are meant to be as anonymous as possible,
@@ -95,7 +116,9 @@ public class Log {
         CREATE_WORLD_SAVE("create_world_save"),
         SELECTION("selection_begin"),
         SNR_OPEN("snr_open"),
-        SNR_EXEC("snr_exec");
+        SNR_EXEC("snr_exec"),
+        DCHUNK("dchunk_open"),
+        CH_BIOME("ch_biome_open");
 
         public final String eventID;
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools" xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2" tools:ignore="TypographyEllipsis">
-    <string name="brand_sub">由@protolambda制作</string>
+    <string name="brand_sub">由Proto Lambda制作</string>
     <string name="title_worlditem_list">请选择一个世界</string>
     <string name="title_worlditem_detail">世界</string>
     <string name="title_activity_world">世界</string>
@@ -24,11 +24,12 @@
         </a>.</string>
     <string name="world_seed_prefix">世界种子：</string>
     <string name="app_about">
-        本应用由<a href="http://twitter.com/protolambda">@protolambda</a>原创，
-        由<a href="https://github.com/MithrilMania/blocktopograph">@MithrilMania</a>、
-        <a href="https://github.com/flagmaggot/blocktopograph">@flagmaggot</a>、
-        <a href="https://github.com/oO0oO0oO0o0o00/blocktopograph">@MeowCat</a>、
-        <a href="https://github.com/MiemieMethod/blocktopograph">@MiemieMethod</a>参与更新和维护。
+        本应用由<b>Proto Lambda</b>（应其要求，已移除链接）原创，
+        <a href="https://github.com/MithrilMania">@MithrilMania</a>、
+        <a href="https://github.com/flagmaggot">@flagmaggot</a>、
+        <a href="https://github.com/oO0oO0oO0o0o00">@MeowCat</a>、
+        <a href="https://github.com/MiemieMethod">@MiemieMethod</a>、
+        <a href="https://github.com/LordJunior">Manuel</a>和其他人参与更新和维护。
         感谢百度贴吧minecraftpe吧的朋友们提供反馈。\n\n
         可以在Google Play、Github的项目release页面（PC版网页）下载或百度贴吧搜索。\n\n
         有账号的可以点一下Star~\n
@@ -37,7 +38,6 @@
         \n使用前请备份你的重要存档，以免发生意外。一点小问题都可能导致Minecraft无法加载整个存档→_→
         \n本应用支持MCPE 0.14至1.9（当前）的存档格式，更旧或者更新的版本【可能】不完全兼容，但不妨一试。
         \n原作者网站：<a href="http://blocktopograph.protolambda.com">blocktopograph.protolambda.com</a>
-        这会是第二任作者的网站吗？或者只是重名<a href="http://mithrilmania.fc2web.com/">mithrilmania.fc2web.com/</a>\n\n
         <i>免责声明</i>\n
         <b>此应用程序与Minecraft、Mojang AB或Microsoft无关。</b>\n
         这不是一个官方的而是一个饭制的APP。\n
@@ -319,31 +319,26 @@
     <string name="locator_page_marker">标记</string>
     <string name="locator_page_coor">坐标</string>
     <string name="gps_picer">截取世界全图</string>
-    <string name="picer_title">全图</string>
+    <string name="picer_title">生成图片</string>
     <string name="picer_dowhat">这会生成世界的完整图片，并崩溃。</string>
-    <string name="picer_ask_wrong_chunks">没用</string>
-    <string name="picer_ask_old_chunks">没用</string>
+    <string name="picer_ask_wrong_chunks">(没用)</string>
+    <string name="picer_ask_old_chunks">(没用)</string>
     <string name="general_ignore">忽略</string>
     <string name="picer_button_cancel">取消并返回</string>
-    <string name="picer_failed_corrupt">没用</string>
-    <string name="picer_failed_old">没用</string>
-    <string name="picer_failed_nodata">没用</string>
-    <string name="picer_warn_wrong_chunks">没用</string>
-    <string name="picer_warn_old_chunks">没用</string>
+    <string name="picer_failed_old">版本太旧，无法读取。</string>
+    <string name="picer_failed_nodata">没找到地形。</string>
     <string name="picer_progress_analyzing">正在分析</string>
     <string name="picer_progress_generating">正在生成</string>
     <string name="picer_preview">预览;</string>
     <string name="picer_save">保存</string>
-    <string name="picer_save_text">没用</string>
-    <string name="picer_saved">没用</string>
+    <string name="picer_save_text">图片会保存到你的“下载”目录。</string>
+    <string name="picer_saved">已保存。</string>
     <string name="general_share">分享</string>
-    <string name="picer_share_title">没用</string>
-    <string name="picer_preview_generating">没用</string>
-    <string name="picer_scale_title">没用</string>
-    <string name="picer_scale_approxim">大约%1$dx%2$d。</string>
-    <string name="picer_failed_too_large">没用</string>
-    <string name="picer_warn_not_scalable">没用</string>
-    <string name="picer_btn_generate">没用</string>
+    <string name="picer_share_title">分享</string>
+    <string name="picer_preview_generating">生成预览...</string>
+    <string name="picer_scale_title">放大倍数：</string>
+    <string name="picer_warn_not_scalable">每个方块会是1像素大小。如果你选择小一点的区域，就能够放大图片。</string>
+    <string name="picer_btn_generate">生成</string>
     <string name="func_begin_selection">开始框选</string>
     <string name="func_cancel_selection">取消选区</string>
     <string name="map_sel_panel_title">选区选项</string>
@@ -372,7 +367,55 @@
     <string name="map_edit_func_snr">查找&amp;替换</string>
     <string name="map_edit_snr_ignore_subtype">忽略子类型</string>
     <string name="map_edit_snr_help_background">简单的查找替换可以无视背景层。从Minecraft BE 1.4.x开始，背景层被用于存储与其他方块共存的水，不过其实可以放任何方块。作为高级地图作者，您可以利用这个特性。</string>
-    <string name="map_sel_warn_backup">使用前请先备份！</string>
+    <string name="map_sel_warn_backup">使用前先备份，请！（震声）</string>
     <string name="create_world_biome_id">生物群系：</string>
     <string name="create_world_biome_hint">数字ID，默认21（丛林）</string>
+    <string name="map_edit_func_dchunk">删除区块</string>
+    <string name="map_edit_dchunk_explain">这会【删除】您选择区域所涉及的区块。Minecraft稍后能重新生成这片区域，但是您在当中的进度会丢失。除非你知道你在做什么以及为什么这么做，请不要继续。</string>
+    <string name="map_edit_dchunk_posbtn_with_auto_adjust">自动调整并继续</string>
+    <string name="open_up_warning_1">这东西很危险，用之前请先备份！</string>
+    <string name="map_edit_dchunk_warn_not_aligned">您选择的区域没有对齐到区块边界。Blocktopograph可以自动调整。实际删除的区域会比您选择的稍大。准确说，每个方向上会多出0~15方块。这是因为区域必须按整个区块删除，才能被重新生成。如果不喜欢自动调整，您可以取消并手动调节。</string>
+    <string name="map_smart_notice_too_many_markers">标记过多！</string>
+    <string name="map_smart_notice_too_many_markers_message">屏幕上有太多标记，比如怪物。您可以在滑动抽屉页点击“标记开关”来关闭，或者设置过滤选项。</string>
+    <string name="map_uioption_open_drawer">打开抽屉</string>
+    <string name="general_got_it">哦</string>
+    <string name="picer_failed_corrupt">这个世界没法被Blocktopograph理解，可能版本过旧或者过新。</string>
+    <string name="biome_pick_title">选择生态群系</string>
+    <string name="map_edit_func_chbiome">更改生态群系</string>
+    <string name="map_edit_chbiome_for">对于</string>
+    <string name="map_edit_chbiome_all">全部</string>
+    <string name="map_edit_chbiome_for_specific">特定的群系</string>
+    <string name="map_edit_chbiome_to">改为</string>
+    <string name="map_notice_try_selection">你可以长按地图，选择“开始框选”然后尝试编辑。</string>
+    <string name="map_picer_world_too_large">世界太大</string>
+    <string name="map_picer_use_selection_instead">太♂大了。你可以:\\n(1) 在电脑上使用同类工具；\\n(2) 或者框选一部分区域然后从选区选项里选择截图。</string>
+    <string name="map_picer_scale_guide">你可以放大图片。每个方块至少1像素。</string>
+    <string name="map_picer_selection_too_large">选区太大</string>
+    <string name="map_picer_selection_too_large_detail">你选择的区域太♂大了。宽度和高度都应该在%1$d方块以内，同时面积在%2$d方块²以内。</string>
+    <string name="map_edit_func_picer">生成图片</string>
+    <string name="picer_scale_approxim">大约%1$dx%2$d。</string>
+    <string name="map_dblclick_notice">双击屏幕以打开抽屉。</string>
+    <string name="map_locator_player_pos_unknown">位置未知</string>
+    <string name="some_thing_went_wrong">出了点问题。。</string>
+    <string name="unsatisfied_link_error_explain">抱歉，出现了一些问题，所以您没法使用这个应用。简单来说，缺失了一个重要的组成部分。您是否从其他拥有此应用程序的人那里获得了安装包？如果是，那么该应用是针对Ta的设备优化的，即使您们的机型一样，也无法使用。请尝试卸载并从Play商店重新安装，或从GitHub等渠道下载完整版。可能需要先卸载。抱歉，但是这是由于错误的使用习惯导致的。</string>
+    <string name="auto_backup_caption">自动备份中...</string>
+    <string name="auto_backup_name">[自动]</string>
+    <string name="auto_del_backups">自动删除超过3天前的备份（不多于3个时将不删除）</string>
+    <string name="auto_make_backups">每次打开世界时，自动备份</string>
+    <string name="backup_amp_restore">备份与恢复</string>
+    <string name="backup_delete_caption">删除备份</string>
+    <string name="backup_delete_warn">您正在删除备份！请确保选择了确实要删除的那一个。</string>
+    <string name="backup_readme">这是这个游戏世界的备份文件夹，由Blocktopograph软件创建和管理。</string>
+    <string name="caption_existing_backups">已有的备份</string>
+    <string name="close">关闭</string>
+    <string name="create_new_backup">创建新备份</string>
+    <string name="enable_auto_backup_note">每次您打开这个世界，Blocktopograph将自动创建备份。取决于世界的大小，这可能花费额外的时间，并占用存储空间。</string>
+    <string name="enable_auto_backup_title">启用自动备份</string>
+    <string name="general_cancelled">已取消。</string>
+    <string name="general_delete">删除</string>
+    <string name="hint_can_leave_empty">可以留空</string>
+    <string name="restore">恢复</string>
+    <string name="restore_caption">恢复先前的备份文件</string>
+    <string name="restore_warn">这将撤销所有在该备份创建以后进行的更改！您确定吗？注意不要丢失进度。</string>
+    <string name="world_name_broken">损坏的世界</string>
 </resources>

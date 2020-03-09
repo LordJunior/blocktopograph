@@ -4,17 +4,6 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.os.Build;
 import android.os.Bundle;
-import androidx.annotation.NonNull;
-import com.google.android.material.navigation.NavigationView;
-import com.google.android.material.snackbar.Snackbar;
-import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentTransaction;
-import androidx.core.view.GravityCompat;
-import androidx.drawerlayout.widget.DrawerLayout;
-import androidx.appcompat.app.ActionBar;
-import androidx.appcompat.app.ActionBarDrawerToggle;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import android.text.Editable;
 import android.view.MenuItem;
 import android.view.View;
@@ -25,9 +14,22 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.GravityCompat;
+import androidx.databinding.DataBindingUtil;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
+
+import com.google.android.material.navigation.NavigationView;
+import com.google.android.material.snackbar.Snackbar;
 import com.mithrilmania.blocktopograph.chunk.NBTChunkData;
+import com.mithrilmania.blocktopograph.databinding.ActivityWorldBinding;
 import com.mithrilmania.blocktopograph.map.Dimension;
 import com.mithrilmania.blocktopograph.map.MapFragment;
+import com.mithrilmania.blocktopograph.map.TileEntity;
 import com.mithrilmania.blocktopograph.map.marker.AbstractMarker;
 import com.mithrilmania.blocktopograph.map.renderer.MapType;
 import com.mithrilmania.blocktopograph.nbt.EditableNBT;
@@ -46,6 +48,7 @@ public class WorldActivity extends AppCompatActivity
 
     public static final String PREF_KEY_SHOW_MARKERS = "showMarkers";
     private World world;
+    private ActivityWorldBinding mBinding;
 
     private MapFragment mapFragment;
 
@@ -62,20 +65,29 @@ public class WorldActivity extends AppCompatActivity
     }
 
     @Override
+    public void openDrawer() {
+        mBinding.drawerLayout.openDrawer(mBinding.navView, true);
+    }
+
+    @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        // immersive fullscreen for Android Kitkat and higher
-        if (hasFocus && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            ActionBar bar = getSupportActionBar();
-            if (bar != null) bar.hide();
-            this.getWindow().getDecorView().setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                            | View.SYSTEM_UI_FLAG_FULLSCREEN
-                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
         }
+        // immersive fullscreen for Android Kitkat and higher
+//        if (hasFocus && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+//            ActionBar bar = getSupportActionBar();
+//            if (bar != null) bar.hide();
+//            this.getWindow().getDecorView().setSystemUiVisibility(
+//                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+//                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+//                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+//                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+//                            | View.SYSTEM_UI_FLAG_FULLSCREEN
+//                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+//        }
     }
 
     @Override
@@ -91,6 +103,7 @@ public class WorldActivity extends AppCompatActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
         /*
         Retrieve world from previous state or intent
          */
@@ -109,28 +122,25 @@ public class WorldActivity extends AppCompatActivity
 
         showMarkers = getPreferences(MODE_PRIVATE).getBoolean(PREF_KEY_SHOW_MARKERS, true);
 
-        super.onCreate(savedInstanceState);
-
-
         /*
                 Layout
          */
-        setContentView(R.layout.activity_world);
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        assert toolbar != null;
-        setSupportActionBar(toolbar);
+        mBinding = DataBindingUtil.setContentView(this, R.layout.activity_world);
+        //Toolbar toolbar = mBinding.bar.toolbar;
+        //assert toolbar != null;
+        //setSupportActionBar(toolbar);
 
-        NavigationView navigationView = findViewById(R.id.nav_view);
+        NavigationView navigationView = mBinding.navView;
         assert navigationView != null;
         navigationView.setNavigationItemSelectedListener(this);
 
         // Main drawer, quick access to different menus, tools and map-types.
-        DrawerLayout drawer = findViewById(R.id.drawer_layout);
-        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
-        assert drawer != null;
-        drawer.addDrawerListener(toggle);
-        toggle.syncState();
+//        DrawerLayout drawer = mBinding.drawerLayout;
+//        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+//                this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+//        assert drawer != null;
+//        drawer.addDrawerListener(toggle);
+//        toggle.syncState();
 
 
         View headerView = navigationView.getHeaderView(0);
@@ -169,21 +179,36 @@ public class WorldActivity extends AppCompatActivity
 
         // Open the world-map as default content
         openWorldMap();
-
-
         try {
-            //try to load world-data (Opens chunk-database for later usage)
-            this.world.getWorldData().load();
+            world.getWorldData().load();
             world.getWorldData().openDB();
         } catch (Exception e) {
-            finish();
             e.printStackTrace();
+            finish();
         }
+//
+//        new AsyncTask<Void, Void, Void>() {
+//            @Override
+//            protected Void doInBackground(Void... voids) {
+//
+//                try {
+//                    //try to load world-data (Opens chunk-database for later usage)
+//                    world.getWorldData().openDB();
+//                } catch (Exception e) {
+//                    e.printStackTrace();
+//                }
+//                return null;
+//            }
+//        }.execute();
+//        finish();
+//        if(1==1)return;
+
 
         Bundle bundle = new Bundle();
         bundle.putString("seed", worldSeed);
         bundle.putString("name", this.world.getWorldDisplayName());
-        bundle.putAll(world.getMapVersionData());
+        Bundle mapVersionData = world.getMapVersionData();
+        if (mapVersionData != null) bundle.putAll(mapVersionData);
 
         // anonymous global counter of opened worlds
         Log.logFirebaseEvent(this, Log.CustomFirebaseEvent.WORLD_OPEN, bundle);
@@ -245,7 +270,7 @@ public class WorldActivity extends AppCompatActivity
 
     @Override
     public void onBackPressed() {
-        DrawerLayout drawer = findViewById(R.id.drawer_layout);
+        DrawerLayout drawer = mBinding.drawerLayout;
         assert drawer != null;
         if (drawer.isDrawerOpen(GravityCompat.START)) {
             drawer.closeDrawer(GravityCompat.START);
@@ -301,7 +326,7 @@ public class WorldActivity extends AppCompatActivity
         Log.d(this, "World activity nav-drawer menu item selected: " + id);
 
 
-        final DrawerLayout drawer = findViewById(R.id.drawer_layout);
+        final DrawerLayout drawer = mBinding.drawerLayout;
         assert drawer != null;
 
 
@@ -383,6 +408,7 @@ public class WorldActivity extends AppCompatActivity
                 break;
             case (R.id.nav_map_opt_filter_markers):
                 //toggle the grid
+                TileEntity.loadIcons(getAssets());
                 this.mapFragment.openMarkerFilter();
                 break;
             case (R.id.nav_map_opt_toggle_markers):
@@ -619,9 +645,9 @@ public class WorldActivity extends AppCompatActivity
         //   Or messes this too much with the first perception of present players?
         final String[] players = getWorld().getWorldData().getNetworkPlayerNames();
 
-        final View content = WorldActivity.this.findViewById(R.id.world_content);
+        final View content = mBinding.getRoot();
         if (players.length == 0) {
-            if (content != null) Snackbar.make(content,
+            Snackbar.make(content,
                     R.string.no_multiplayer_data_found,
                     Snackbar.LENGTH_LONG)
                     .setAction("Action", null).show();

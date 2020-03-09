@@ -6,6 +6,13 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.databinding.DataBindingUtil;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.mithrilmania.blocktopograph.Log;
 import com.mithrilmania.blocktopograph.R;
 import com.mithrilmania.blocktopograph.World;
 import com.mithrilmania.blocktopograph.WorldData;
@@ -14,15 +21,7 @@ import com.mithrilmania.blocktopograph.databinding.ItemLocatorPlayerBinding;
 import com.mithrilmania.blocktopograph.map.Player;
 import com.mithrilmania.blocktopograph.util.math.DimensionVector3;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.lang.ref.WeakReference;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.databinding.DataBindingUtil;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
 public final class LocatorPlayersFragment extends LocatorPageFragment {
 
@@ -35,7 +34,7 @@ public final class LocatorPlayersFragment extends LocatorPageFragment {
         return ret;
     }
 
-    @NotNull
+    @NonNull
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         mBinding = DataBindingUtil.inflate(
@@ -95,7 +94,8 @@ public final class LocatorPlayersFragment extends LocatorPageFragment {
                 if (owner.mCameraMoveCallback != null) {
                     int index = getAdapterPosition();
                     DimensionVector3<Float> pos = players[index].getPosition();
-                    owner.mCameraMoveCallback.moveCamera(pos.x, pos.z);
+                    if (pos != null)
+                        owner.mCameraMoveCallback.moveCamera(pos.x, pos.z);
                 }
             }
         }
@@ -117,20 +117,31 @@ public final class LocatorPlayersFragment extends LocatorPageFragment {
             WorldData worldData = world.getWorldData();
             try {
                 worldData.openDB();
+                DimensionVector3<Float> localPlayerPos = world.getPlayerPos();
                 String[] mlst = worldData.getNetworkPlayerNames();
-                Player[] players = new Player[mlst.length + 1];
-                players[0] = Player.localPlayer();
-                players[0].setPosition(world.getPlayerPos());
+                Player[] players;
+                int offset;
+                if (localPlayerPos == null) {
+                    players = new Player[mlst.length];
+                    offset = 0;
+                } else {
+                    players = new Player[mlst.length + 1];
+                    offset = 1;
+                    players[0] = Player.localPlayer();
+                    players[0].setPosition(localPlayerPos);
+                }
                 for (int i = 0; i < mlst.length; i++) {
                     Player player = Player.networkPlayer(mlst[i]);
                     try {
                         player.setPosition(world.getMultiPlayerPos(mlst[i]));
-                    } catch (Exception ignore) {
+                    } catch (Exception e) {
+                        Log.d(this, e);
                     }
-                    players[i + 1] = player;
+                    players[i + offset] = player;
                 }
                 return players;
             } catch (Exception e) {
+                Log.d(this, e);
                 return null;
             }
         }
@@ -139,14 +150,16 @@ public final class LocatorPlayersFragment extends LocatorPageFragment {
         protected void onPostExecute(Player[] players) {
             LocatorPlayersFragment owner = this.owner.get();
             if (owner == null) return;
+            owner.mBinding.loading.setVisibility(View.GONE);
             if (players == null || players.length == 0) {
-                owner.mBinding.recycleView.setVisibility(View.GONE);
+                owner.mBinding.empty.setVisibility(View.VISIBLE);
+                owner.mBinding.empty.setText(R.string.failed_find_player);
             } else {
-                owner.mBinding.recycleView.setLayoutManager(
+                owner.mBinding.list.setLayoutManager(
                         new LinearLayoutManager(owner.getActivity()));
-                owner.mBinding.recycleView.setAdapter(
+                owner.mBinding.list.setAdapter(
                         new PlayersAdapter(new WeakReference<>(owner), players));
-                owner.mBinding.emptyView.setVisibility(View.GONE);
+                owner.mBinding.list.setVisibility(View.VISIBLE);
             }
         }
     }

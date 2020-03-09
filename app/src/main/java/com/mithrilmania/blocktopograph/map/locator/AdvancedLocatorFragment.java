@@ -7,15 +7,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.mithrilmania.blocktopograph.R;
-import com.mithrilmania.blocktopograph.World;
-import com.mithrilmania.blocktopograph.databinding.FragMapGotoBinding;
-import com.mithrilmania.blocktopograph.map.FloatPaneFragment;
-
-import org.jetbrains.annotations.NotNull;
-
-import java.lang.ref.WeakReference;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.databinding.DataBindingUtil;
@@ -24,11 +15,19 @@ import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentPagerAdapter;
 import androidx.viewpager.widget.ViewPager;
 
+import com.mithrilmania.blocktopograph.R;
+import com.mithrilmania.blocktopograph.World;
+import com.mithrilmania.blocktopograph.databinding.FragMapGotoBinding;
+import com.mithrilmania.blocktopograph.map.FloatPaneFragment;
+
+import java.lang.ref.WeakReference;
+
 public final class AdvancedLocatorFragment extends FloatPaneFragment {
 
     public static final String PREF_KEY_LOCATOR_PAGE = "locator_page";
     private World mWorld;
     private LocatorPageFragment.CameraMoveCallback mCameraMoveCallback;
+    private LocatorPagerAdapter mAdapter;
 
     public static AdvancedLocatorFragment create(World world, LocatorPageFragment.CameraMoveCallback cameraMoveCallback) {
         AdvancedLocatorFragment ret = new AdvancedLocatorFragment();
@@ -37,11 +36,12 @@ public final class AdvancedLocatorFragment extends FloatPaneFragment {
         return ret;
     }
 
-    @NotNull
+    @NonNull
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         FragMapGotoBinding binding = DataBindingUtil.inflate(inflater, R.layout.frag_map_goto, container, false);
-        binding.pager.setAdapter(new LocatorPagerAdapter(getChildFragmentManager(), this));
+        mAdapter = new LocatorPagerAdapter(getChildFragmentManager(), this);
+        binding.pager.setAdapter(mAdapter);
         binding.header.close.setOnClickListener(view -> {
             if (mOnCloseButtonClickListener != null)
                 mOnCloseButtonClickListener.onCloseButtonClick();
@@ -64,6 +64,7 @@ public final class AdvancedLocatorFragment extends FloatPaneFragment {
                         .edit()
                         .putInt(PREF_KEY_LOCATOR_PAGE, i)
                         .apply();
+                mAdapter.doOverScroll(i);
             }
 
             @Override
@@ -117,6 +118,11 @@ public final class AdvancedLocatorFragment extends FloatPaneFragment {
             return locatorCoordFragment;
         }
 
+        void doOverScroll(int i) {
+            if (i == 0 && locatorCoordFragment != null)
+                locatorCoordFragment.doOverScroll();
+        }
+
         @Nullable
         @Override
         public CharSequence getPageTitle(int position) {
@@ -134,7 +140,7 @@ public final class AdvancedLocatorFragment extends FloatPaneFragment {
             }
         }
 
-        @NotNull
+        @NonNull
         private Fragment getAnyPlaceHolderFragment() {
             if (locatorPlayersFragment != null) return locatorPlayersFragment;
             if (locatorMarkersFragment != null) return locatorMarkersFragment;
@@ -143,7 +149,7 @@ public final class AdvancedLocatorFragment extends FloatPaneFragment {
         }
 
         @Override
-        @NotNull
+        @NonNull
         public Fragment getItem(int i) {
             AdvancedLocatorFragment owner = this.owner.get();
             if (owner == null) {

@@ -1,21 +1,22 @@
 package com.mithrilmania.blocktopograph.flat;
 
 import android.content.Intent;
-import androidx.databinding.DataBindingUtil;
 import android.os.Bundle;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
 import android.widget.EditText;
 
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.databinding.DataBindingUtil;
+
 import com.andreabaccega.formedittextvalidator.Validator;
 import com.andreabaccega.widget.FormEditText;
 import com.mithrilmania.blocktopograph.Log;
 import com.mithrilmania.blocktopograph.R;
+import com.mithrilmania.blocktopograph.block.ListingBlock;
 import com.mithrilmania.blocktopograph.databinding.DialogEditLayerBinding;
-import com.mithrilmania.blocktopograph.map.Block;
 import com.mithrilmania.blocktopograph.util.UiUtil;
 
 import java.io.Serializable;
@@ -78,7 +79,7 @@ public final class EditLayerDialog extends AppCompatActivity {
         });
         amountBar.addValidator(new AmountValidator(getString(R.string.edit_layer_amount_constrait)));
 
-        mBinding.icon.setImageBitmap(layer.block.bitmap);
+        mBinding.icon.setImageBitmap(layer.block.getIcon(getAssets()));
         UiUtil.blendBlockColor(mBinding.frame, layer.block);
     }
 
@@ -111,10 +112,11 @@ public final class EditLayerDialog extends AppCompatActivity {
             case REQUEST_CODE_PICK_BLOCK: {
                 if (resultCode != RESULT_OK) return;
                 assert data != null;
-                Block block = (Block) data.getSerializableExtra(PickBlockActivity.EXTRA_KEY_BLOCK);
+                ListingBlock block = (ListingBlock) data.getSerializableExtra(PickBlockActivity.EXTRA_KEY_BLOCK);
                 Layer layer = mBinding.getLayer();
                 layer.block = block;
                 mBinding.setLayer(layer);
+                mBinding.icon.setImageBitmap(layer.block.getIcon(getAssets()));
                 UiUtil.blendBlockColor(mBinding.frame, block);
                 //mBinding.notifyChange();
                 return;

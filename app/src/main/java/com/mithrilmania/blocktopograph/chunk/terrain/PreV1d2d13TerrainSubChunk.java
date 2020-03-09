@@ -1,6 +1,11 @@
 package com.mithrilmania.blocktopograph.chunk.terrain;
 
+import androidx.annotation.NonNull;
+
 import com.mithrilmania.blocktopograph.WorldData;
+import com.mithrilmania.blocktopograph.block.Block;
+import com.mithrilmania.blocktopograph.block.BlockRegistry;
+import com.mithrilmania.blocktopograph.block.KnownBlockRepr;
 import com.mithrilmania.blocktopograph.map.Dimension;
 
 import java.nio.ByteBuffer;
@@ -15,7 +20,10 @@ public final class PreV1d2d13TerrainSubChunk extends TerrainSubChunk {
 
     private ByteBuffer mData;
 
-    PreV1d2d13TerrainSubChunk(ByteBuffer raw) {
+    PreV1d2d13TerrainSubChunk(@NonNull ByteBuffer raw, @NonNull BlockRegistry blockRegistry) {
+
+        super(blockRegistry);
+
         int size = raw.capacity();
         if (size < POS_SKY_LIGHT || size > TERRAIN_MAX_LENGTH) {
             mIsError = true;
@@ -28,18 +36,19 @@ public final class PreV1d2d13TerrainSubChunk extends TerrainSubChunk {
         mHasBlockLight = size == TERRAIN_MAX_LENGTH;
     }
 
+    @NonNull
     @Override
-    public int getBlockRuntimeId(int x, int y, int z, int layer) {
-        if (mIsError) return 0;
+    public Block getBlock(int x, int y, int z, int layer) {
+        if (mIsError) return getAir();
         int offset = getOffset(x, y, z);
         int id = mData.get(POS_BLOCK_IDS + offset) & 0xff;
         int data = mData.get(POS_META_DATA + (offset >>> 1));
         data = (offset & 1) == 1 ? ((data >>> 4) & 0xf) : (data & 0xf);
-        return (id << 8) | data;
+        return wrapKnownBlock(KnownBlockRepr.getBestBlock(id, data));
     }
 
     @Override
-    public void setBlockRuntimeId(int x, int y, int z, int layer, int runtimeId) {
+    public void setBlock(int x, int y, int z, int layer, @NonNull Block block) {
         // TODO implement setBlock for pre v1.2.13 subChunk.
     }
 

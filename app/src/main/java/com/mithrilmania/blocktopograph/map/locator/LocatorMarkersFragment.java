@@ -7,27 +7,25 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.mithrilmania.blocktopograph.Log;
-import com.mithrilmania.blocktopograph.R;
-import com.mithrilmania.blocktopograph.World;
-import com.mithrilmania.blocktopograph.databinding.FragLocatorMarkersBinding;
-import com.mithrilmania.blocktopograph.databinding.ItemLocatorMarkerBinding;
-import com.mithrilmania.blocktopograph.map.marker.AbstractMarker;
-
-import org.jetbrains.annotations.NotNull;
-
-import java.lang.ref.WeakReference;
-import java.util.Collection;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.databinding.DataBindingUtil;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.mithrilmania.blocktopograph.Log;
+import com.mithrilmania.blocktopograph.R;
+import com.mithrilmania.blocktopograph.World;
+import com.mithrilmania.blocktopograph.databinding.FragLocatorPlayersBinding;
+import com.mithrilmania.blocktopograph.databinding.ItemLocatorMarkerBinding;
+import com.mithrilmania.blocktopograph.map.marker.AbstractMarker;
+
+import java.lang.ref.WeakReference;
+import java.util.Collection;
+
 public final class LocatorMarkersFragment extends LocatorPageFragment {
 
-    private FragLocatorMarkersBinding mBinding;
+    private FragLocatorPlayersBinding mBinding;
     private World mWorld;
 
     public static LocatorMarkersFragment create(World world) {
@@ -36,24 +34,24 @@ public final class LocatorMarkersFragment extends LocatorPageFragment {
         return ret;
     }
 
-    @NotNull
+    @NonNull
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         mBinding = DataBindingUtil.inflate(
-                inflater, R.layout.frag_locator_markers, container, false);
+                inflater, R.layout.frag_locator_players, container, false);
         new LoadingTask(this).execute(mWorld);
         return mBinding.getRoot();
     }
 
     private static class MarkersAdapter extends RecyclerView.Adapter<MarkersAdapter.MeowHolder> {
 
-        @NotNull
+        @NonNull
         private final WeakReference<LocatorPageFragment> owner;
 
-        @NotNull
+        @NonNull
         private final AbstractMarker[] markers;
 
-        MarkersAdapter(@NotNull WeakReference<LocatorPageFragment> owner, @NotNull AbstractMarker[] markers) {
+        MarkersAdapter(@NonNull WeakReference<LocatorPageFragment> owner, @NonNull AbstractMarker[] markers) {
             this.owner = owner;
             this.markers = markers;
         }
@@ -152,17 +150,19 @@ public final class LocatorMarkersFragment extends LocatorPageFragment {
             LocatorMarkersFragment owner = this.owner.get();
             Activity activity;
             if (owner == null || (activity = owner.getActivity()) == null) return;
+            owner.mBinding.loading.setVisibility(View.GONE);
             if (markers == null) {
-                owner.mBinding.recycleView.setVisibility(View.GONE);
-                owner.mBinding.emptyView.setText(R.string.general_failed);
+                owner.mBinding.empty.setVisibility(View.VISIBLE);
+                owner.mBinding.empty.setText(R.string.general_failed);
             } else if (markers.length == 0) {
-                owner.mBinding.recycleView.setVisibility(View.GONE);
+                owner.mBinding.empty.setVisibility(View.VISIBLE);
+                owner.mBinding.empty.setText(R.string.no_custom_markers);
             } else {
-                owner.mBinding.recycleView.setLayoutManager(
+                owner.mBinding.list.setLayoutManager(
                         new LinearLayoutManager(activity));
-                owner.mBinding.recycleView.setAdapter(
+                owner.mBinding.list.setAdapter(
                         new MarkersAdapter(new WeakReference<>(owner), markers));
-                owner.mBinding.emptyView.setVisibility(View.GONE);
+                owner.mBinding.list.setVisibility(View.VISIBLE);
             }
         }
     }

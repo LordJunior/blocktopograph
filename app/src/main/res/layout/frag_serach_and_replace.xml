@@ -26,7 +26,7 @@
             android:paddingLeft="10dp"
             android:paddingRight="10dp">
 
-            <ScrollView
+            <com.mithrilmania.blocktopograph.view.MeowScrollView
                 android:id="@+id/scroll"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
@@ -132,11 +132,11 @@
 
                     </LinearLayout>
 
-                    <CheckBox
+                    <!--CheckBox
                         android:id="@+id/cb_igsub"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/map_edit_snr_ignore_subtype" />
+                        android:text="@string/map_edit_snr_ignore_subtype" /-->
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -213,7 +213,7 @@
 
                 </LinearLayout>
 
-            </ScrollView>
+            </com.mithrilmania.blocktopograph.view.MeowScrollView>
 
         </RelativeLayout>
 

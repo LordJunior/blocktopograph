@@ -1,7 +1,9 @@
 package com.mithrilmania.blocktopograph;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.os.AsyncTask;
@@ -10,12 +12,20 @@ import android.os.Environment;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.databinding.DataBindingUtil;
+import androidx.fragment.app.Fragment;
+
 import com.litl.leveldb.DB;
+import com.mithrilmania.blocktopograph.block.ListingBlock;
 import com.mithrilmania.blocktopograph.databinding.ActivityCreateWorldBinding;
 import com.mithrilmania.blocktopograph.flat.EditFlatFragment;
 import com.mithrilmania.blocktopograph.flat.FlatLayers;
 import com.mithrilmania.blocktopograph.flat.Layer;
-import com.mithrilmania.blocktopograph.map.Block;
+import com.mithrilmania.blocktopograph.map.Biome;
 import com.mithrilmania.blocktopograph.nbt.InventoryHolder;
 import com.mithrilmania.blocktopograph.nbt.ItemTag;
 import com.mithrilmania.blocktopograph.nbt.Keys;
@@ -38,23 +48,18 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.databinding.DataBindingUtil;
-import androidx.fragment.app.Fragment;
 
 import static android.content.res.AssetManager.ACCESS_STREAMING;
 
 
 public final class CreateWorldActivity extends AppCompatActivity {
 
+    public static final int REQUEST_CODE_PICK_BIOME = 2012;
     private ActivityCreateWorldBinding mBinding;
     private ToolTipsManager mToolTipsManager;
 
@@ -62,12 +67,15 @@ public final class CreateWorldActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mBinding = DataBindingUtil.setContentView(this, R.layout.activity_create_world);
+        //mBinding.scroll.post(()->mBinding.scroll.doOverScroll());
         mToolTipsManager = new ToolTipsManager();
         Log.logFirebaseEvent(this, Log.CustomFirebaseEvent.CREATE_WORLD_OPEN);
-        mBinding.scroll.post(() -> mBinding.scroll.scrollTo(0, 0));
+
+        setBiomeToView(Biome.JUNGLE);
     }
 
     public void onClickPositiveButton(View view) {
+        //Toast.makeText(this, "fuck", Toast.LENGTH_SHORT).show();
         new CreateWorldTask(this).execute();
     }
 
@@ -79,6 +87,26 @@ public final class CreateWorldActivity extends AppCompatActivity {
                 getString(R.string.edit_flat_help), ToolTip.POSITION_ABOVE)
                 .setAlign(ToolTip.ALIGN_LEFT);
         mToolTipsManager.show(builder.build());
+    }
+
+    public void onClickChangeBiome(View view) {
+        startActivityForResult(new Intent(this, BiomeSelectDialog.class), REQUEST_CODE_PICK_BIOME);
+    }
+
+    private void setBiomeToView(@NonNull Biome biome) {
+        UiUtil.blendBlockColor(mBinding.biomeView.root, biome);
+        mBinding.biomeView.setBiome(biome);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        if (requestCode == REQUEST_CODE_PICK_BIOME) {
+            if (resultCode == RESULT_OK && data != null) {
+                Serializable ser = data.getSerializableExtra(BiomeSelectDialog.KEY_BIOME);
+                if (ser instanceof Biome) setBiomeToView((Biome) ser);
+            }
+        }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     private static class CreateWorldTask extends AsyncTask<Void, Void, Boolean> {
@@ -111,10 +139,11 @@ public final class CreateWorldActivity extends AppCompatActivity {
             canProceed = true;
             mName = activity.mBinding.worldName.getText().toString();
             mVersion = activity.mBinding.version.getCheckedRadioButtonId();
-            mBiome = UiUtil.readIntFromViewWithDefault(activity.mBinding.worldBiome, 21);
+            Biome biome = activity.mBinding.biomeView.getBiome();
+            mBiome = biome == null ? 21 : biome.id;
             Fragment fr = activity.getSupportFragmentManager().findFragmentById(R.id.frag_layers);
-            assert fr instanceof EditFlatFragment;
             EditFlatFragment frag = (EditFlatFragment) fr;
+            assert frag != null;
             layers = frag.getResultLayers();
         }
 
@@ -146,12 +175,10 @@ public final class CreateWorldActivity extends AppCompatActivity {
 
             // Get version.
             String verStr;
-            switch (mVersion) {
-                case R.id.version_aqua:
-                    verStr = "1_2_13";
-                    break;
-                default:
-                    verStr = "unknown";
+            if (mVersion == R.id.version_aqua) {
+                verStr = "1_2_13";
+            } else {
+                verStr = "unknown";
             }
 
             // Get dir.
@@ -161,7 +188,8 @@ public final class CreateWorldActivity extends AppCompatActivity {
                 int cnt = 0;
                 do {
                     wDir = new File(worldsDir, dirName + '_' + cnt);
-                } while (wDir.exists());
+                    cnt++;
+                } while (wDir.exists() && cnt < 1000);
             }
             if (!wDir.mkdir()) return false;
 
@@ -180,21 +208,19 @@ public final class CreateWorldActivity extends AppCompatActivity {
             {
                 // Name.
                 Tag tag = rootTag.getChildTagByKey(Keys.LEVEL_NAME);
-                assert tag instanceof StringTag;
                 StringTag stag = (StringTag) tag;
                 stag.setValue(name);
 
                 // Layers.
                 tag = rootTag.getChildTagByKey(Keys.FLAT_WORLD_LAYERS);
-                assert tag instanceof StringTag;
                 int lsize = layers.size();
                 if (lsize != 4) mIsVanillaFlat = false;
                 else {
                     Layer ltest = layers.get(0);
-                    mIsVanillaFlat = ltest.block == Block.B_31_2_TALLGRASS_GRASS && ltest.amount == 1
-                            && (ltest = layers.get(1)).block == Block.B_2_0_GRASS && ltest.amount == 1
-                            && (ltest = layers.get(2)).block == Block.B_3_0_DIRT && ltest.amount == 29
-                            && (ltest = layers.get(3)).block == Block.B_7_0_BEDROCK && ltest.amount == 1;
+                    mIsVanillaFlat = ltest.block == ListingBlock.B_31_TALLGRASS && ltest.amount == 1
+                            && (ltest = layers.get(1)).block == ListingBlock.B_2_GRASS && ltest.amount == 1
+                            && (ltest = layers.get(2)).block == ListingBlock.B_3_DIRT && ltest.amount == 29
+                            && (ltest = layers.get(3)).block == ListingBlock.B_7_BEDROCK && ltest.amount == 1;
                 }
                 Layer[] alayers = new Layer[lsize < 3 ? 3 : lsize];
                 for (int i = 0; i < lsize; i++) {
@@ -213,7 +239,6 @@ public final class CreateWorldActivity extends AppCompatActivity {
 
                 // Time.
                 tag = rootTag.getChildTagByKey(Keys.LAST_PLAYED);
-                assert tag instanceof LongTag;
                 LongTag ltag = (LongTag) tag;
                 ltag.setValue(System.currentTimeMillis() / 1000);
             }
@@ -264,6 +289,7 @@ public final class CreateWorldActivity extends AppCompatActivity {
                 //itag.setXuid("2535445286243008");
                 CompoundTag page = itag.getPage(0);
                 assert page != null;
+                @SuppressLint("SimpleDateFormat")
                 SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                 ItemTag.setPageText(page, activity.getString(
                         R.string.create_world_book_page_0, dateFormat.format(new Date())));
@@ -284,11 +310,11 @@ public final class CreateWorldActivity extends AppCompatActivity {
                     }
                     for (int i = 0; i < lines; i++) {
                         Layer layer = layers.get(i);
-                        int maxlen = 11 - Integer.toString(layer.amount).length();
+                        int maxlen = 12 - Integer.toString(layer.amount).length();
                         String nam;
                         if (maxlen <= 0) nam = "";
                         else {
-                            String namo = layer.block.str;
+                            String namo = layer.block.getName();
                             if (namo.length() >= maxlen) nam = namo.substring(0, maxlen);
                             else nam = namo;
                         }

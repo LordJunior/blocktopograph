@@ -3,11 +3,14 @@ package com.mithrilmania.blocktopograph.map;
 import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.Editable;
 import android.util.DisplayMetrics;
+import android.view.GestureDetector;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -21,12 +24,27 @@ import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.UiThread;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.view.ContextThemeWrapper;
+import androidx.databinding.DataBindingUtil;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentActivity;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
+import androidx.vectordrawable.graphics.drawable.VectorDrawableCompat;
 
 import com.google.android.material.snackbar.Snackbar;
 import com.mithrilmania.blocktopograph.Log;
 import com.mithrilmania.blocktopograph.R;
 import com.mithrilmania.blocktopograph.World;
 import com.mithrilmania.blocktopograph.WorldActivityInterface;
+import com.mithrilmania.blocktopograph.block.KnownBlockRepr;
 import com.mithrilmania.blocktopograph.chunk.Chunk;
 import com.mithrilmania.blocktopograph.chunk.ChunkTag;
 import com.mithrilmania.blocktopograph.chunk.NBTChunkData;
@@ -53,8 +71,6 @@ import com.mithrilmania.blocktopograph.util.math.DimensionVector3;
 import com.qozix.tileview.detail.DetailLevelManager;
 import com.qozix.tileview.markers.MarkerLayout;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -68,26 +84,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.UiThread;
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.view.ContextThemeWrapper;
-import androidx.core.content.ContextCompat;
-import androidx.databinding.DataBindingUtil;
-import androidx.fragment.app.DialogFragment;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentActivity;
-import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentTransaction;
-
 
 public class MapFragment extends Fragment {
 
     private final static int MARKER_INTERVAL_CHECK = 50;
-    public static final String TAG_PICER = "picer";
+    private static final String TAG_PICER = "picer";
+    private static final int MARKERS_ON_SCREEN_TOO_MANY = 100;
+    private static final String PREF_KEY_HAS_NOTIFIED_MARKERS_TOO_MANY = "has_notified_markers_too_many";
+    private static final String PREF_KEY_HAS_USED_SELECTION = "hasUsedSelection";
+    private static final String KEY_HAS_DOUBLE_TAP = "hasDoubleTap";
     //static, remember choice while app is open.
-    static Map<NamedBitmapProvider, BitmapChoiceListAdapter.NamedBitmapChoice> markerFilter = new HashMap<>();
+    private static Map<NamedBitmapProvider, BitmapChoiceListAdapter.NamedBitmapChoice> markerFilter = new HashMap<>();
 
     static {
         //entities are enabled by default
@@ -108,14 +115,14 @@ public class MapFragment extends Fragment {
 
     //procedural markers can be iterated while other threads add things to it;
     // iterating performance is not really affected because of the small size;
-    public CopyOnWriteArraySet<AbstractMarker> proceduralMarkers = new CopyOnWriteArraySet<>();
+    private CopyOnWriteArraySet<AbstractMarker> proceduralMarkers = new CopyOnWriteArraySet<>();
 
-    public Set<AbstractMarker> staticMarkers = new HashSet<>();
+    private Set<AbstractMarker> staticMarkers = new HashSet<>();
 
-    public AbstractMarker spawnMarker;
-    public AbstractMarker localPlayerMarker;
+    private AbstractMarker spawnMarker;
+    private AbstractMarker localPlayerMarker;
     private WeakReference<WorldActivityInterface> worldProvider;
-    private World world;
+    public World world;
     private MCTileProvider minecraftTileProvider;
     private int proceduralMarkersInterval = 0;
     private volatile AsyncTask shrinkProceduralMarkersTask;
@@ -157,7 +164,10 @@ public class MapFragment extends Fragment {
         FragmentActivity activity = getActivity();
         if (activity == null) return;
 
-        Log.logFirebaseEvent(activity, Log.CustomFirebaseEvent.MAPFRAGMENT_RESUME);
+//        Toast toast = new Toast(activity);
+//        toast.setView(getLayoutInflater().inflate(R.layout.toast_warn, (ViewGroup) activity.getWindow().getDecorView(), false));
+//        toast.setDuration(Toast.LENGTH_LONG);
+//        toast.show();
     }
 
     public void closeChunks() {
@@ -196,7 +206,7 @@ public class MapFragment extends Fragment {
 //                //byte[] arr = world.getWorldData().getChunkData(0, 0, ChunkTag.TERRAIN, Dimension.OVERWORLD, (byte) 0, true);
 //                //V1d2d13TerrainSubChunk subChunk = new V1d2d13TerrainSubChunk(ByteBuffer.wrap(arr));
 //                for (int z = 0; z < 16; z++)
-//                    chunk.setBlockRuntimeId(0, 6, z, 0, Block.B_5_0_PLANKS_OAK.getRuntimeId());
+//                    chunk.setBlock(0, 6, z, 0, KnownBlockRepr.B_5_0_PLANKS_OAK.getRuntimeId());
 //                chunk.save();//world.getWorldData(), 0, 0, Dimension.OVERWORLD, 1);
 //                Log.d(this, "ok");
 //            } catch (Exception e) {
@@ -211,6 +221,7 @@ public class MapFragment extends Fragment {
 
             DimensionVector3<Float> playerPos = world.getPlayerPos();
 
+            assert playerPos != null;
             Snackbar.make(mBinding.tileView,
                     getString(R.string.something_at_xyz_dim_float, getString(R.string.player),
                             playerPos.x, playerPos.y, playerPos.z),
@@ -286,7 +297,7 @@ public class MapFragment extends Fragment {
             if (mBinding.selectionBoard.hasSelection()) {
                 SelectionMenuFragment fragment = SelectionMenuFragment
                         .newInstance(mBinding.selectionBoard.getSelection(),
-                                this::doSelectionBasedEdit);
+                                world.getWorldData().mBlockRegistry, this::doSelectionBasedEdit);
                 trans.add(R.id.float_window_container, fragment);
                 mFloatingFragment = fragment;
                 setUpSelectionMenu();
@@ -305,7 +316,8 @@ public class MapFragment extends Fragment {
                 fragment = AdvancedLocatorFragment.create(world, this::frameTo);
             } else if (mFloatingFragment instanceof SelectionMenuFragment) {
                 fragment = SelectionMenuFragment
-                        .newInstance(mBinding.selectionBoard.getSelection(), this::doSelectionBasedEdit);
+                        .newInstance(mBinding.selectionBoard.getSelection(), world.getWorldData().mBlockRegistry,
+                                this::doSelectionBasedEdit);
             } else return;
             closeFloatPane();
             openFloatPane(fragment);
@@ -347,7 +359,7 @@ public class MapFragment extends Fragment {
      * @param fragment pane fragment to be attached.
      */
     @UiThread
-    private void openFloatPane(@NotNull FloatPaneFragment fragment) {
+    private void openFloatPane(@NonNull FloatPaneFragment fragment) {
         FragmentManager fm = getChildFragmentManager();
         fragment.setOnCloseButtonClickListener(this::closeFloatPane);
         FragmentTransaction trans = fm.beginTransaction();
@@ -358,9 +370,26 @@ public class MapFragment extends Fragment {
         mFloatingFragment = fragment;
     }
 
+    private void onOpenFab(View view) {
+        if (mBinding.fabMenu.isOpened())
+            mBinding.fabMenu.close(true);
+        else {
+            mBinding.fabMenu.open(true);
+            FragmentActivity activity = getActivity();
+            if (activity != null) {
+                SharedPreferences preferences = activity.getPreferences(Context.MODE_PRIVATE);
+                if (!preferences
+                        .getBoolean(KEY_HAS_DOUBLE_TAP, false)) {
+                    Toast.makeText(activity, getString(R.string.map_dblclick_notice), Toast.LENGTH_SHORT).show();
+                    preferences.edit().putBoolean(KEY_HAS_DOUBLE_TAP, true).apply();
+                }
+            }
+        }
+    }
+
     @Nullable
     @Override
-    public View onCreateView(@NotNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
         //TODO handle savedInstance...
 
@@ -368,6 +397,27 @@ public class MapFragment extends Fragment {
                 inflater, R.layout.map_fragment, container, false);
         mBinding.tileView.setSelectionView(mBinding.selectionBoard);
         mBinding.selectionBoard.setTileView(mBinding.tileView);
+        mBinding.tileView.setOuterDoubleTapListener(new GestureDetector.OnDoubleTapListener() {
+            @Override
+            public boolean onSingleTapConfirmed(MotionEvent e) {
+                return false;
+            }
+
+            @Override
+            public boolean onDoubleTap(MotionEvent e) {
+                worldProvider.get().openDrawer();
+                FragmentActivity activity = getActivity();
+                if (activity != null)
+                    activity.getPreferences(Context.MODE_PRIVATE)
+                            .edit().putBoolean(KEY_HAS_DOUBLE_TAP, true).apply();
+                return false;
+            }
+
+            @Override
+            public boolean onDoubleTapEvent(MotionEvent e) {
+                return false;
+            }
+        });
 
         final Activity activity = getActivity();
 
@@ -376,42 +426,46 @@ public class MapFragment extends Fragment {
             return null;
         }
 
-        assert activity instanceof WorldActivityInterface;
         WorldActivityInterface activityInterface = (WorldActivityInterface) activity;
         worldProvider = new WeakReference<>(activityInterface);
         world = activityInterface.getWorld();
 
+        mBinding.fabMenu.setOnMenuButtonClickListener(this::onOpenFab);
+
         // GPS button: moves camera to player position
         mBinding.fabMenuGpsPlayer.setOnClickListener(this::moveCameraToPlayer);
+        Resources resources = activity.getResources();
         mBinding.fabMenuGpsPlayer.setImageDrawable(
-                ContextCompat.getDrawable(activity, R.drawable.ic_person));
+                VectorDrawableCompat.create(resources, R.drawable.ic_person, null));
 
         // GPS button: moves camera to spawn
         mBinding.fabMenuGpsSpawn.setOnClickListener(this::moveCameraToSpawn);
         mBinding.fabMenuGpsSpawn.setImageDrawable(
-                ContextCompat.getDrawable(activity, R.drawable.ic_action_home));
+                VectorDrawableCompat.create(resources, R.drawable.ic_action_home, null));
 
         // Display a menu allowing user to move camera to many places.
         mBinding.fabMenuGpsOthers.setOnClickListener(unusedView ->
                 openFloatPane(AdvancedLocatorFragment.create(world, this::frameTo)));
         mBinding.fabMenuGpsOthers.setImageDrawable(
-                ContextCompat.getDrawable(activity, R.drawable.ic_action_search));
+                VectorDrawableCompat.create(resources, R.drawable.ic_action_search, null));
 
         mBinding.fabMenuGpsPicer.setOnClickListener(unusedView -> {
             WorldActivityInterface worldProvider = this.worldProvider.get();
             if (worldProvider == null) return;
             DialogFragment fragment = PicerFragment.create(world,
-                    new DimensionVector3<>(0, 0, 0, worldProvider.getDimension()));
+                    worldProvider.getDimension(), null, this::triggerLongPressAtCenter);
             fragment.show(getChildFragmentManager(), TAG_PICER);
         });
         mBinding.fabMenuGpsPicer.setImageDrawable(
-                ContextCompat.getDrawable(activity, R.drawable.ic_menu_camera));
+                VectorDrawableCompat.create(resources, R.drawable.ic_menu_camera, null));
 
         // Show the toolbar if the fab menu is opened
         mBinding.fabMenu.setOnMenuToggleListener(opened -> {
             WorldActivityInterface worldProvider = MapFragment.this.worldProvider.get();
-            if (opened) worldProvider.showActionBar();
-            else worldProvider.hideActionBar();
+            if (opened) {
+                worldProvider.showActionBar();
+                //worldProvider.openDrawer();
+            } else worldProvider.hideActionBar();
         });
 
 
@@ -422,7 +476,7 @@ public class MapFragment extends Fragment {
         }
 
         try {
-            Block.loadBitmaps(activity.getAssets());
+            KnownBlockRepr.loadBitmaps(activity.getAssets());
         } catch (IOException e) {
             Log.d(this, e);
         }
@@ -479,6 +533,22 @@ public class MapFragment extends Fragment {
 
         tileView.setScale(0.5f);
 
+        // Notify user to try using selection.
+        if (!activity.getPreferences(Context.MODE_PRIVATE).getBoolean(PREF_KEY_HAS_USED_SELECTION, false)) {
+            if (System.currentTimeMillis() % 25 == 0) tileView.postDelayed(() -> {
+                FragmentActivity activity1 = getActivity();
+                if (activity1 == null) return;
+                new AlertDialog.Builder(activity1)
+                        .setMessage(R.string.map_notice_try_selection)
+                        .setPositiveButton(android.R.string.ok, null)
+                        .create()
+                        .show();
+                activity1.getPreferences(Context.MODE_PRIVATE)
+                        .edit()
+                        .putBoolean(PREF_KEY_HAS_USED_SELECTION, true)
+                        .apply();
+            }, 1000);
+        }
 
         boolean framedToPlayer = false;
 
@@ -648,7 +718,6 @@ public class MapFragment extends Fragment {
 
         tileView.setSaveEnabled(true);
 
-
         return mBinding.getRoot();
     }
 
@@ -663,7 +732,7 @@ public class MapFragment extends Fragment {
      * @param dimension new pos Dimension
      * @return the newly created marker, which should replace the old one.
      */
-    public AbstractMarker moveMarker(AbstractMarker marker, int x, int y, int z, Dimension dimension) {
+    private AbstractMarker moveMarker(AbstractMarker marker, int x, int y, int z, Dimension dimension) {
         AbstractMarker newMarker = marker.copy(x, y, z, dimension);
         if (staticMarkers.remove(marker)) staticMarkers.add(newMarker);
         this.removeMarker(marker);
@@ -678,23 +747,30 @@ public class MapFragment extends Fragment {
         return newMarker;
     }
 
-    private void doSelectionBasedEdit(@NotNull EditFunction func, @Nullable Bundle args) {
+    private void doSelectionBasedEdit(@NonNull EditFunction func, @Nullable Bundle args) {
         WorldActivityInterface worldActivityInterface = worldProvider.get();
-        if (worldActivityInterface == null) return;
-        new SelectionBasedContextFreeEditTask(func, args, this).execute(
-                new RectEditTarget(
-                        world.getWorldData(),
-                        mBinding.selectionBoard.getSelection(),
-                        worldActivityInterface.getDimension())
-        );
         FragmentActivity activity = getActivity();
-        if (activity != null)
-            switch (func) {
-                case LAMPSHADE:
-                case SNR:
-                    Log.logFirebaseEvent(activity, Log.CustomFirebaseEvent.SNR_OPEN);
-                    break;
+        if (worldActivityInterface == null || activity == null) return;
+        switch (func) {
+            case SNR:
+            case LAMPSHADE:
+            case CHBIOME:
+            case DCHUNK:
+                new SelectionBasedContextFreeEditTask(func, args, this, world.getWorldData().mBlockRegistry).execute(
+                        new RectEditTarget(
+                                world.getWorldData(),
+                                mBinding.selectionBoard.getSelection(),
+                                worldActivityInterface.getDimension())
+                );
+                break;
+            case PICER: {
+                PicerFragment fragment = PicerFragment.create(
+                        world, worldActivityInterface.getDimension(),
+                        mBinding.selectionBoard.getSelection(), null
+                );
+                fragment.show(activity.getSupportFragmentManager(), TAG_PICER);
             }
+        }
     }
 
     /**
@@ -749,6 +825,8 @@ public class MapFragment extends Fragment {
         Activity act = getActivity();
         if (act == null) return;
 
+        TileEntity.loadIcons(act.getAssets());
+
         for (AbstractMarker abstractMarker : proceduralMarkers) {
             if (abstractMarker.equals(marker)) {
                 removeMarker(abstractMarker);
@@ -773,6 +851,21 @@ public class MapFragment extends Fragment {
         }
 
         proceduralMarkers.add(marker);
+
+        if (proceduralMarkers.size() > MARKERS_ON_SCREEN_TOO_MANY) {
+            SharedPreferences pref = act.getPreferences(Context.MODE_PRIVATE);
+            if (!pref.getBoolean(PREF_KEY_HAS_NOTIFIED_MARKERS_TOO_MANY, false)) {
+                pref.edit().putBoolean(PREF_KEY_HAS_NOTIFIED_MARKERS_TOO_MANY, true).apply();
+                AlertDialog dialog = new AlertDialog.Builder(act)
+                        .setTitle(R.string.map_smart_notice_too_many_markers)
+                        .setMessage(R.string.map_smart_notice_too_many_markers_message)
+                        .setPositiveButton(R.string.map_uioption_open_drawer, (dialogInterface, i) -> worldProvider.get().openDrawer())
+                        .setNegativeButton(R.string.general_got_it, null)
+                        .create();
+                dialog.setCanceledOnTouchOutside(false);
+                dialog.show();
+            }
+        }
 
         MarkerImageView markerView = marker.getView(act);
 
@@ -816,13 +909,20 @@ public class MapFragment extends Fragment {
         return values;
     }
 
+    private void triggerLongPressAtCenter() {
+        MotionEvent event = MotionEvent.obtain(0L, 0L, 0,
+                (float) (mBinding.tileView.getMeasuredWidth() / 2),
+                (float) (mBinding.tileView.getMeasuredHeight() / 2), 0);
+        onLongPressed(event);
+        // ...
+    }
+
     /**
      * Map long press handler, shows a list of options.
      *
      * @param event long press event.
      */
-    private void onLongPressed(@NotNull MotionEvent event) {
-
+    private void onLongPressed(@NonNull MotionEvent event) {
         Dimension dimension = worldProvider.get().getDimension();
 
         // 1 chunk per tile on scale 1.0
@@ -904,18 +1004,28 @@ public class MapFragment extends Fragment {
         } else {
             mBinding.selectionBoard.beginSelection(worldX, worldZ);
             SelectionMenuFragment fragment = SelectionMenuFragment
-                    .newInstance(mBinding.selectionBoard.getSelection(), this::doSelectionBasedEdit);
+                    .newInstance(mBinding.selectionBoard.getSelection(), world.getWorldData().mBlockRegistry, this::doSelectionBasedEdit);
             openFloatPane(fragment);
             setUpSelectionMenu();
             Activity activity = getActivity();
-            if (activity != null)
+            if (activity != null) {
                 Log.logFirebaseEvent(activity, Log.CustomFirebaseEvent.SELECTION);
+                activity.getPreferences(Context.MODE_PRIVATE).edit()
+                        .putBoolean(PREF_KEY_HAS_USED_SELECTION, true).apply();
+            }
         }
     }
 
     private void onChooseEditEntitiesOrTileEntities(Dimension dim, int chunkXint, int chunkZint, View container, boolean isEntity) {
-        final Chunk chunk = world.getWorldData()
-                .getChunk(chunkXint, chunkZint, dim);
+        final Chunk chunk;
+        try {
+            chunk = world.getWorldData()
+                    .getChunk(chunkXint, chunkZint, dim);
+        } catch (Exception e) {
+            Log.d(this, e);
+            Toast.makeText(getContext(), R.string.error_could_not_open_world, Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         if (!chunkDataNBT(chunk, isEntity)) {
             Snackbar.make(container, String.format(getString(R.string.failed_to_load_x),
@@ -1194,10 +1304,14 @@ public class MapFragment extends Fragment {
         }
     }
 
+    public void refreshAfterEdit() {
+        mBinding.tileView.getTileCanvasViewGroup().clear();
+        mBinding.tileView.getTileCanvasViewGroup().requiredBeginRenderTask();
+    }
+
     public void resetTileView() {
         if (mBinding.tileView != null) {
             WorldActivityInterface worldProvider = this.worldProvider.get();
-            Log.logFirebaseEvent(getActivity(), Log.CustomFirebaseEvent.MAPFRAGMENT_RESET);
 
             updateMarkerFilter();
 

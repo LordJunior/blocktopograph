@@ -2,7 +2,7 @@
 
     <string name="app_name" translatable="false">Blocktopograph</string>
 
-    <string name="brand_sub">By @protolambda</string>
+    <string name="brand_sub">A community-made app</string>
 
     <string name="title_worlditem_list">Select a world</string>
     <string name="title_worlditem_detail">World</string>
@@ -27,12 +27,14 @@
         And then check if you can find it here!</string>
 
     <string name="app_about">
-        This app is created by <a href="http://twitter.com/protolambda">@protolambda</a>,
+        This app is created by <b>Protol Lambda</b> (Link removed as he asked to),
         contributed by
-        <a href="https://github.com/MithrilMania/blocktopograph">@MithrilMania</a>,
-        <a href="https://github.com/flagmaggot/blocktopograph">@flagmaggot</a>,
-        <a href="https://github.com/oO0oO0oO0o0o00/blocktopograph">@MeowCat</a>,
-        <a href="https://github.com/MiemieMethod/blocktopograph">@MiemieMethod</a> and others as well.\n\n
+        <a href="https://github.com/MithrilMania">@MithrilMania</a>,
+        <a href="https://github.com/flagmaggot">@flagmaggot</a>,
+        <a href="https://github.com/oO0oO0oO0o0o00">@MeowCat</a>,
+        <a href="https://github.com/MiemieMethod">@MiemieMethod</a>,
+        <a href="https://github.com/LordJunior">Manuel</a>,
+        ScrapperBox25, Tcbdxh and many others as well.\n\n
         Available on Google Play.\n\n
         Current active github repository:
         <a href="https://github.com/oO0oO0oO0o0o00/blocktopograph">github.com/oO0oO0oO0o0o00/blocktopograph</a>
@@ -67,7 +69,7 @@
         \n
         <i>Source code on GitHub:</i>\n
         <a href="https://github.com/mithrilmania/blocktopograph">github.com/mithrilmania/blocktopograph</a> \n
-
+        \n
     </string>
 
     <string name="app_help">The app documentation can be found at (maybe out of date):
@@ -339,7 +341,7 @@
     <string name="create_need_restart">After creating, the world will appear in Minecraft after restarting the game.</string>
     <string name="title_test_page">Test Page</string>
     <string name="create_world_book_title">Meow~</string>
-    <string name="create_world_book_page_0" translatable="false"><!--
+    <string name="create_world_book_page_0"><!--
         -->"\n§cWelcome~ Meow~"<!--
         -->"\n§rCreated by"<!--
         -->"\n§3Blocktopograph"<!--
@@ -367,8 +369,8 @@
     <string name="locator_page_marker">Markers</string>
     <string name="locator_page_coor">Coordinate</string>
     <string name="gps_picer">Get full picture\nof world</string>
-    <string name="picer_title">Full Picture</string>
-    <string name="picer_dowhat">This would generate a picture of the world, and crash.</string>
+    <string name="picer_title">Take Picture</string>
+    <string name="picer_dowhat">This would generate a picture of the world, and may crash.</string>
     <string name="picer_ask_wrong_chunks">There are corrupted or unsupported data, skip or cancel?</string>
     <string name="picer_ask_old_chunks">There\'re data from old Minecraft version in the world. You may want to cancel now, and open the world in newer Minecraft to have data automatically updated. You can also ignore these data.</string>
     <string name="general_ignore">Ignore</string>
@@ -376,8 +378,6 @@
     <string name="picer_failed_corrupt">Your world cannot be understood by Blocktopograph, perhaps your game version is too old or too new.</string>
     <string name="picer_failed_old">This world is of a too old Minecraft version therefore cannot be read.</string>
     <string name="picer_failed_nodata">No terrain found.</string>
-    <string name="picer_warn_wrong_chunks">Warning: There\'re corrupted or unsupported chunks found and ignored.</string>
-    <string name="picer_warn_old_chunks">Warning: There\'re old and unsupported chunks found and ignored. Reloading the world with newer Minecraft may fix this.</string>
     <string name="picer_progress_analyzing">Analyzing</string>
     <string name="picer_progress_generating">Generating</string>
     <string name="picer_preview">Preview:</string>
@@ -386,11 +386,8 @@
     <string name="picer_saved">Picture saved.</string>
     <string name="general_share">Share</string>
     <string name="picer_share_title">Share With</string>
-    <string name="picer_preview_generating">Generating preview...</string>
     <string name="picer_scale_title">Select scale:</string>
-    <string name="picer_scale_approxim">Approximately %1$dx%2$d.</string>
-    <string name="picer_failed_too_large">Sorry but the area is too large.</string>
-    <string name="picer_warn_not_scalable">(Not scalable)</string>
+    <string name="picer_warn_not_scalable">Each block will be one pixel\'s large. If you select a smaller area, then you will be able to scale the picture larger.</string>
     <string name="picer_btn_generate">Generate</string>
     <string name="func_begin_selection">Begin selection</string>
     <string name="func_cancel_selection">Cancel selection</string>
@@ -405,7 +402,7 @@
     <string name="map_sel_menu_apply">Apply</string>
     <string name="map_sel_error_size_one">Width and height shall be at least 1.</string>
     <string name="map_sel_menu_op">Operations</string>
-    <string name="map_edit_func_lampshade">Lampshade all torches</string>
+    <string name="map_edit_func_lampshade">Lampshade Torches</string>
     <string name="map_edit_lampshade_note">This would add glass shades to torches in selected area. Worlds of Minecraft Bedrock 1.4.x or higher are supported. We advice you to back up your world before any modification in Blocktopograph.</string>
     <string name="map_edit_snr_find_in">Find in</string>
     <string name="map_edit_snr_bg">Background</string>
@@ -420,7 +417,74 @@
     <string name="map_edit_func_snr">Find &amp; Replace</string>
     <string name="map_edit_snr_ignore_subtype">Ignore sub-types</string>
     <string name="map_edit_snr_help_background">Simple find and replace can be done ignoring background slot. Since Minecraft BE 1.4.x, background slots are used to store water coexisting with other blocks, however they can be used to place any block. For advanced map makers you can really make good use of the feature.</string>
-    <string name="map_sel_warn_backup">MAKE A BACKUP BEFORE PROCEED!</string>
+    <string name="map_sel_warn_backup">ALWAYS MAKE A BACKUP BEFORE PROCEED!</string>
     <string name="create_world_biome_id">Biome:</string>
     <string name="create_world_biome_hint">Numeric ID of biome, 21 by default</string>
+    <string name="picer_scale_approxim">Approximately %1$dx%2$d.</string>
+    <string name="map_edit_func_dchunk">Delete Chunks</string>
+    <string name="map_edit_dchunk_explain">This would DELETE all chunks involved within your selected area. Minecraft could later generate the area again, but your progress within would be lost. Unless you know what \"chunk\" is in Minecraft and understand the consequence, you shouln\'t proceed. Don\'t just follow random online articles.</string>
+    <string name="map_edit_dchunk_warn_not_aligned">Your selected area was not aligned to chunk boundary. Don\'t worry, Blocktopograph can adjust for you. The actual deleted area would be slightly larger than the selection. To be accurate, it would be 0~15 blocks larger at each side. That\'s because the area can only be re-generated if it was deleted with its containing chunks. If you don\'t like the auto-adjustment you can cancel and change the selection yourself.</string>
+    <string name="map_edit_dchunk_posbtn_with_auto_adjust">Continue with auto-adjust</string>
+    <string name="open_up_warning_1">The app is dangerous, \nmake a backup before editing!</string>
+    <string name="map_smart_notice_too_many_markers">Too Many Markers!</string>
+    <string name="map_smart_notice_too_many_markers_message">There\'re too many markers on your screen, e.g. mobs. You can turn them off by clicking \"toggle markers\" in the slide drawer, or set a marker filter.</string>
+    <string name="map_uioption_open_drawer">Open drawer</string>
+    <string name="general_got_it">Got it</string>
+    <string name="privacy_promo_title" translatable="false">Privacy Policy</string>
+    <string name="privacy_promo_text" translatable="false"><!--
+        -->Hello friend,\n\n<!--
+        -->For a better experience, while using our Service, I may require you to provide us with <!--
+        -->certain information, including but not limited to general information about your opened <!--
+        -->Minecraft worlds, including versions, seeds; and device/OS related statistics collected <!--
+        -->by Firebase automatically, which might be (indirectly) personally identifiable, technically.\n\n<!--
+        -->Link to privacy policy of third party service providers used by the app:\n<!--
+        --><a href="https://www.google.com/policies/privacy/">Google Play Services</a>\n<!--
+        --><a href="https://firebase.google.com/policies/analytics">Firebase Analytics</a>\n<!--
+        --><a href="http://try.crashlytics.com/terms/privacy-policy.pdf">Crashlytics</a>\n\n<!--
+        -->All collected data would only be processed on secured services provided by those <!--
+        -->publicly trusted providers online.\n\n<!--
+        -->Full privacy policy is available <!--
+        -->at <a href="https://sites.google.com/view/rbq2012-blocktopograph-privacy"><!--
+        -->Blocktopograph Privacy Policy</a><!--
+     --></string>
+    <string name="privacy_promo_accept_btn" translatable="false">Accept></string>
+    <string name="privacy_promo_reject_btn" translatable="false">Quit</string>
+    <string name="biome_pick_title">Pick A Biome</string>
+    <string name="map_edit_func_chbiome">Change Biome</string>
+    <string name="map_edit_chbiome_for">For</string>
+    <string name="map_edit_chbiome_all">All</string>
+    <string name="map_edit_chbiome_for_specific">Specific biome</string>
+    <string name="map_edit_chbiome_to">Change to</string>
+    <string name="map_notice_try_selection">You can long click on map, choose \"Begin selection\" and try editing.</string>
+    <string name="map_picer_world_too_large">World Too Large</string>
+    <string name="map_picer_use_selection_instead">The world is too large. You can either:\n(1) Use a similar tool on PC;\n(2) Or begin a selection of part of the world, and choose \"Generate Picture\" from selection menu.</string>
+    <string name="map_picer_scale_guide">You can scale the picture larger. One pixel per block at least.</string>
+    <string name="map_picer_selection_too_large">Selection Too Large</string>
+    <string name="map_picer_selection_too_large_detail">Your selected area is too large. Width and height should both be within %1$d blocks, and the area should be within %2$d block²s.</string>
+    <string name="map_edit_func_picer">Generate Picture</string>
+    <string name="picer_preview_generating">Generating Preview...</string>
+    <string name="map_locator_player_pos_unknown">Position unknown</string>
+    <string name="map_dblclick_notice">Tap screen twice to open the drawer.</string>
+    <string name="some_thing_went_wrong">Something Went Wrong...</string>
+    <string name="unsatisfied_link_error_explain">Sorry, something went wrong so that you would not be able to use this app. In brief, a magic part of the app is missing. \\nHave you received the app (apk file) from some one else that has previously installed the app? Then the app was optimized for that person\'s device only, even though you have the same model of device it will not work. Try uninstall and reinstall from Google Play Store may solve it. You can also download full version of the app from GitHub or other sources. In this case you may also need to remove this version of the app. Sorry for the inconvenience but this is definitely caused by your bad habit of not downloading from the right place.\\nIf it\'s not the situation then we have no idea.</string>
+    <string name="close">Close</string>
+    <string name="backup_amp_restore"><![CDATA[Backup & Restore]]></string>
+    <string name="create_new_backup">Create new backup</string>
+    <string name="caption_existing_backups">Existing backups</string>
+    <string name="auto_del_backups">Automatically delete backups older than 3 days (not deleting if no more than 3 backups exists)</string>
+    <string name="auto_make_backups">Automatically make backups whenever opening the world</string>
+    <string name="backup_readme"><![CDATA[This is the backup folder for this world created and managed by Blocktopograph, an Android Minecraft world editor & map viewer. Please do not modify the files directly, or you may not be able to restore those backups through Blocktopograph.]]></string>
+    <string name="enable_auto_backup_note">Every time you open the world, Blocktopograph will make a new backup. This may take some time and cause additional storage usage.</string>
+    <string name="enable_auto_backup_title">Enable Auto Backup</string>
+    <string name="hint_can_leave_empty">You can leave it empty</string>
+    <string name="general_cancelled">Cancelled.</string>
+    <string name="restore">Restore</string>
+    <string name="restore_caption">Restoring Previous Backup</string>
+    <string name="restore_warn">This would undo all changes to the world before the creation of the backup! Are you sure? Be careful it may undo your work!</string>
+    <string name="general_delete">Delete</string>
+    <string name="backup_delete_caption">Deleting Backup</string>
+    <string name="backup_delete_warn">You are deleting the backup. Make sure you picked the right one.</string>
+    <string name="auto_backup_caption">Auto Backup In Progress...</string>
+    <string name="auto_backup_name">[Auto]</string>
+    <string name="world_name_broken">Broken World</string>
 </resources>

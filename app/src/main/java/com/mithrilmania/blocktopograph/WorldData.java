@@ -3,18 +3,20 @@ package com.mithrilmania.blocktopograph;
 import android.annotation.SuppressLint;
 import android.util.LruCache;
 
+import androidx.annotation.Nullable;
+
 import com.litl.leveldb.DB;
 import com.litl.leveldb.Iterator;
+import com.mithrilmania.blocktopograph.block.BlockRegistry;
 import com.mithrilmania.blocktopograph.chunk.Chunk;
 import com.mithrilmania.blocktopograph.chunk.ChunkTag;
+import com.mithrilmania.blocktopograph.chunk.Version;
 import com.mithrilmania.blocktopograph.map.Dimension;
 
 import java.io.File;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
-
-import androidx.annotation.Nullable;
 
 /**
  * Wrapper around level.dat world spec en levelDB database.
@@ -28,9 +30,11 @@ public class WorldData {
 
     private WeakReference<World> world;
     private LruCache<Key, Chunk> chunks = new ChunkCache(this, 256);
+    public final BlockRegistry mBlockRegistry;
 
     public WorldData(World world) {
         this.world = new WeakReference<>(world);
+        this.mBlockRegistry = new BlockRegistry(2048);
     }
 
     static String bytesToHex(byte[] bytes, int start, int end) {
@@ -156,6 +160,13 @@ public class WorldData {
         db.delete(getChunkDataKey(x, z, type, dimension, subChunk, asSubChunk));
     }
 
+    public Chunk getChunk(int cX, int cZ, Dimension dimension, boolean createIfMissing, Version createOfVersion) {
+        Key key = new Key(cX, cZ, dimension);
+        key.createIfMissng = createIfMissing;
+        key.createOfVersion = createOfVersion;
+        return chunks.get(key);
+    }
+
     public Chunk getChunk(int cX, int cZ, Dimension dimension) {
         Key key = new Key(cX, cZ, dimension);
         return chunks.get(key);
@@ -163,8 +174,8 @@ public class WorldData {
 
     // Avoid using cache for stream like operations.
     // Caller shall lock cache before operation and invalidate cache afterwards.
-    public Chunk getChunkStreaming(int cx, int cz, Dimension dimension) {
-        return Chunk.create(this, cx, cz, dimension);
+    public Chunk getChunkStreaming(int cx, int cz, Dimension dimension, boolean createIfMissing, Version createOfVersion) {
+        return Chunk.create(this, cx, cz, dimension, createIfMissing, createOfVersion);
     }
 
     public void resetCache() {
@@ -214,14 +225,16 @@ public class WorldData {
         protected Chunk create(Key key) {
             WorldData worldData = this.worldData.get();
             if (worldData == null) return null;
-            return Chunk.create(worldData, key.x, key.z, key.dim);
+            return Chunk.create(worldData, key.x, key.z, key.dim, key.createIfMissng, key.createOfVersion);
         }
     }
 
     static class Key {
 
         public int x, z;
-        Dimension dim;
+        public Dimension dim;
+        public boolean createIfMissng;
+        public Version createOfVersion;
 
         Key(int x, int z, Dimension dim) {
             this.x = x;

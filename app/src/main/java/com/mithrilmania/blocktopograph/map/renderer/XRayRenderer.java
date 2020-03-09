@@ -1,13 +1,14 @@
 package com.mithrilmania.blocktopograph.map.renderer;
 
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 
 import com.mithrilmania.blocktopograph.WorldData;
+import com.mithrilmania.blocktopograph.block.KnownBlockRepr;
 import com.mithrilmania.blocktopograph.chunk.Chunk;
 import com.mithrilmania.blocktopograph.chunk.Version;
-import com.mithrilmania.blocktopograph.map.Block;
 import com.mithrilmania.blocktopograph.map.Dimension;
 
 
@@ -19,41 +20,38 @@ public class XRayRenderer implements MapRenderer {
 
     public void renderToBitmap(Chunk chunk, Canvas canvas, Dimension dimension, int chunkX, int chunkZ, int pX, int pY, int pW, int pL, Paint paint, WorldData worldData) throws Version.VersionException {
 
-        int x, y, z, color, tX, tY;
-
         //render width in blocks
         int rW = 16;
         int size2D = rW * (16);
         int index2D;
-        Block[] bestBlock = new Block[size2D];
+        KnownBlockRepr[] bestBlock = new KnownBlockRepr[size2D];
 
         int[] minValue = new int[size2D];
         int bValue;
-        Block block;
+        KnownBlockRepr block;
 
         int average;
-        int r, g, b;
 
-        for (z = 0; z < 16; z++) {
-            for (x = 0; x < 16; x++) {
+        for (int z = 0; z < 16; z++) {
+            for (int x = 0; x < 16; x++) {
 
-                for (y = 0; y < chunk.getHeightLimit(); y++) {
-                    block = Block.getBlock(chunk.getBlockRuntimeId(x, y, z));
+                for (int y = 0; y < chunk.getHeightLimit(); y++) {
+                    block = chunk.getBlock(x, y, z, 0).getLegacyBlock();
 
                     index2D = (z * rW) + x;
-                    if (block == null || block.id <= 1)
+                    if (block.id <= 1)
                         continue;
-                    else if (block == Block.B_56_0_DIAMOND_ORE) {
+                    else if (block == KnownBlockRepr.B_56_0_DIAMOND_ORE) {
                         bestBlock[index2D] = block;
                         break;
-                    } else if (block == Block.B_129_0_EMERALD_ORE) bValue = 8;
-                    else if (block == Block.B_153_0_QUARTZ_ORE) bValue = 7;
-                    else if (block == Block.B_14_0_GOLD_ORE) bValue = 6;
-                    else if (block == Block.B_15_0_IRON_ORE) bValue = 5;
-                    else if (block == Block.B_73_0_REDSTONE_ORE) bValue = 4;
-                    else if (block == Block.B_21_0_LAPIS_ORE) bValue = 3;
-                        //else if(block == Block.COAL_ORE) bValue = 2;
-                        //else if(b == Block.LAVA || b == Block.STATIONARY_LAVA) bValue = 1;
+                    } else if (block == KnownBlockRepr.B_129_0_EMERALD_ORE) bValue = 8;
+                    else if (block == KnownBlockRepr.B_153_0_QUARTZ_ORE) bValue = 7;
+                    else if (block == KnownBlockRepr.B_14_0_GOLD_ORE) bValue = 6;
+                    else if (block == KnownBlockRepr.B_15_0_IRON_ORE) bValue = 5;
+                    else if (block == KnownBlockRepr.B_73_0_REDSTONE_ORE) bValue = 4;
+                    else if (block == KnownBlockRepr.B_21_0_LAPIS_ORE) bValue = 3;
+                        //else if(block == KnownBlockRepr.COAL_ORE) bValue = 2;
+                        //else if(b == KnownBlockRepr.LAVA || b == KnownBlockRepr.STATIONARY_LAVA) bValue = 1;
                     else bValue = 0;
 
                     if (bValue > minValue[index2D]) {
@@ -70,16 +68,19 @@ public class XRayRenderer implements MapRenderer {
 //            return;
 //        }
 
-        for (z = 0, tY = pY; z < 16; z++, tY += pL) {
-            for (x = 0, tX = pX; x < 16; x++, tX += pW) {
-                block = bestBlock[((z - 0) * rW) + (x - 0)];
-                if (block == null || block.color == null) {
+        for (int z = 0, tY = pY; z < 16; z++, tY += pL) {
+            for (int x = 0, tX = pX; x < 16; x++, tX += pW) {
+                block = bestBlock[(z * rW) + x];
+                int color;
+                if (block == null) {
                     color = 0xff000000;
                 } else {
 
-                    r = block.color.red;
-                    g = block.color.green;
-                    b = block.color.blue;
+                    color = block.color;
+
+                    int r = Color.red(color);
+                    int g = Color.green(color);
+                    int b = Color.blue(color);
                     average = (r + g + b) / 3;
 
                     //make the color better recognizable

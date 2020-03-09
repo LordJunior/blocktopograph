@@ -1,8 +1,11 @@
 package com.mithrilmania.blocktopograph;
 
+import android.content.Context;
 import android.os.Bundle;
-import androidx.annotation.NonNull;
 import android.util.SparseIntArray;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.litl.leveldb.Iterator;
 import com.mithrilmania.blocktopograph.chunk.Chunk;
@@ -51,7 +54,9 @@ public class World implements Serializable {
     private transient WorldData worldData;
     private transient MarkerManager markersManager;
 
-    public World(File worldFolder, String mark) throws WorldLoadException {
+    private boolean mHaveBackgroundJob;
+
+    public World(File worldFolder, String mark, @NonNull Context context) throws WorldLoadException {
 
         if (!worldFolder.exists())
             throw new WorldLoadException("Error: '" + worldFolder.getPath() + "' does not exist!");
@@ -62,14 +67,13 @@ public class World implements Serializable {
 
         // check for a custom world name
         File levelNameTxt = new File(this.worldFolder, "levelname.txt");
+        this.levelFile = new File(this.worldFolder, "level.dat");
         if (levelNameTxt.exists())
             worldName = IoUtil.readTextFileFirstLine(levelNameTxt);// new way of naming worlds
-        else worldName = this.worldFolder.getName();// legacy way of naming worlds
+        else if (levelFile.exists())
+            worldName = this.worldFolder.getName();// legacy way of naming worlds
+        else worldName = context.getString(R.string.world_name_broken);
 
-
-        this.levelFile = new File(this.worldFolder, "level.dat");
-        if (!levelFile.exists())
-            throw new WorldLoadException("Error: Level-file: '" + levelFile.getPath() + "' does not exist!");
 
     }
 
@@ -87,7 +91,6 @@ public class World implements Serializable {
         if (worldName == null) return null;
         //return worldname, without special color codes
         // (character prefixed by the section-sign character)
-        // Short quick regex, shouldn't affect performance too much
         return worldName.replaceAll("\u00A7.", "");
     }
 
@@ -98,6 +101,7 @@ public class World implements Serializable {
         return seed == null ? 0 : seed.getValue();
     }
 
+    @Nullable
     public Bundle getMapVersionData() {
         try {
             Bundle bundle = new Bundle();
@@ -178,7 +182,6 @@ public class World implements Serializable {
             }
             return bundle;
         } catch (Exception e) {
-            // This will log the exception and an upcoming crash will take it.
             Log.e(this, e);
             return null;
         }
@@ -224,8 +227,8 @@ public class World implements Serializable {
         }
     }
 
-    @NonNull
-    public DimensionVector3<Float> getPlayerPos() throws Exception {
+    @Nullable
+    public DimensionVector3<Float> getPlayerPos() {
         try {
             WorldData wData = getWorldData();
             wData.openDB();
@@ -235,15 +238,13 @@ public class World implements Serializable {
                     ? (CompoundTag) DataConverter.read(data).get(0)
                     : (CompoundTag) getLevel().getChildTagByKey("Player");
 
-            ListTag posVec = (ListTag) player.getChildTagByKey("Pos");
-            if (posVec == null || posVec.getValue() == null)
-                throw new Exception("No \"Pos\" specified");
-            if (posVec.getValue().size() != 3)
-                throw new Exception("\"Pos\" value is invalid. value: " + posVec.getValue().toString());
+            if (player == null) {
+                Log.d(this, "No local player. A server world?");
+                return null;
+            }
 
+            ListTag posVec = (ListTag) player.getChildTagByKey("Pos");
             IntTag dimensionId = (IntTag) player.getChildTagByKey("DimensionId");
-            if (dimensionId == null || dimensionId.getValue() == null)
-                throw new Exception("No \"DimensionId\" specified");
             Dimension dimension = Dimension.getDimension(dimensionId.getValue());
             if (dimension == null) dimension = Dimension.OVERWORLD;
 
@@ -252,12 +253,9 @@ public class World implements Serializable {
                     (float) posVec.getValue().get(1).getValue(),
                     (float) posVec.getValue().get(2).getValue(),
                     dimension);
-
         } catch (Exception e) {
-            e = new Exception("Could not find player.");
-            e.setStackTrace(e.getStackTrace());
             Log.d(this, e);
-            throw e;
+            return null;
         }
     }
 
@@ -307,7 +305,10 @@ public class World implements Serializable {
     }
 
     public void pause() throws WorldData.WorldDBException {
-        closeDown();
+        if (mHaveBackgroundJob)
+            Log.d(this, "User is doing background job with the app really in background!");
+        else
+            closeDown();
     }
 
     public void resume() throws WorldData.WorldDBException {
@@ -340,6 +341,10 @@ public class World implements Serializable {
         } catch (WorldData.WorldDBException e) {
             e.printStackTrace();
         }
+    }
+
+    public void setHaveBackgroundJob(boolean haveBackgroundJob) {
+        mHaveBackgroundJob = haveBackgroundJob;
     }
 
     public enum SpecialDBEntryType {

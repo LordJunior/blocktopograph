@@ -2,7 +2,11 @@ package com.mithrilmania.blocktopograph.chunk;
 
 import android.graphics.Color;
 
+import androidx.annotation.NonNull;
+
 import com.mithrilmania.blocktopograph.WorldData;
+import com.mithrilmania.blocktopograph.block.Block;
+import com.mithrilmania.blocktopograph.block.KnownBlockRepr;
 import com.mithrilmania.blocktopograph.map.Dimension;
 
 import java.nio.ByteBuffer;
@@ -137,29 +141,41 @@ public final class PocketChunk extends Chunk {
     }
 
     @Override
+    public void setBiome(int x, int z, int id) {
+        mData.put(POS_BIOME_DATA + (get2dOffset(x, z) << 2), (byte) id);
+    }
+
+    @Override
     public int getGrassColor(int x, int z) {
         int offset = POS_BIOME_DATA + (get2dOffset(x, z) << 2);
         return Color.rgb(mData.get(offset + 1) & 0xff, mData.get(offset + 2) & 0xff, mData.get(offset + 3) & 0xff);
     }
 
+    @NonNull
     @Override
-    public int getBlockRuntimeId(int x, int y, int z) {
+    public Block getBlock(int x, int y, int z) {
+        return getBlock(x, y, z, 0);
+    }
+
+    @NonNull
+    @Override
+    public Block getBlock(int x, int y, int z, int layer) {
+        return mWorldData.get().mBlockRegistry.createBlock(getKnownBlock(x, y, z, layer));
+    }
+
+    @NonNull
+    private KnownBlockRepr getKnownBlock(int x, int y, int z, int layer) {
         if (x >= 16 || y >= 128 || z >= 16 || x < 0 || y < 0 || z < 0 || mIsVoid)
-            return 0;
+            return KnownBlockRepr.B_0_0_AIR;
         int offset = getOffset(x, y, z);
         int id = mData.get(POS_BLOCK_IDS + offset) & 0xff;
         int data = mData.get(POS_META_DATA + (offset >>> 1));
         data = (offset & 1) == 1 ? ((data >>> 4) & 0xf) : (data & 0xf);
-        return (id << 8) | data;
+        return KnownBlockRepr.getBestBlock(id, data);
     }
 
     @Override
-    public int getBlockRuntimeId(int x, int y, int z, int layer) {
-        return getBlockRuntimeId(x, y, z);
-    }
-
-    @Override
-    public void setBlockRuntimeId(int x, int y, int z, int layer, int runtimeId) {
+    public void setBlock(int x, int y, int z, int layer, @NonNull Block block) {
         //TODO implement setBlock for pocket chunk
     }
 
@@ -184,7 +200,7 @@ public final class PocketChunk extends Chunk {
     @Override
     public int getHighestBlockYUnderAt(int x, int z, int y) {
         for (int yy = y; yy >= 0; yy--) {
-            if (getBlockRuntimeId(x & 0xf, yy, z & 0xf) != 0) return yy;
+            if (getKnownBlock(x & 0xf, yy, z & 0xf, 0) != KnownBlockRepr.B_0_0_AIR) return yy;
         }
         return -1;
     }
@@ -192,7 +208,7 @@ public final class PocketChunk extends Chunk {
     @Override
     public int getCaveYUnderAt(int x, int z, int y) {
         for (int yy = y; yy >= 0; yy--) {
-            if (getBlockRuntimeId(x & 0xf, yy, z & 0xf) == 0) return yy;
+            if (getKnownBlock(x & 0xf, yy, z & 0xf, 0) == KnownBlockRepr.B_0_0_AIR) return yy;
         }
         return -1;
     }
@@ -200,5 +216,6 @@ public final class PocketChunk extends Chunk {
     @Override
     public void save() {
         // TODO implement save for pocket chunk
+        if (mIsError || mIsVoid) return;
     }
 }

@@ -4,7 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.mithrilmania.blocktopograph.Log;
-import com.mithrilmania.blocktopograph.map.Block;
+import com.mithrilmania.blocktopograph.block.KnownBlockRepr;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -37,11 +37,11 @@ public final class FlatLayers {
             for (int i = 0; i < alayers.length; i++) {
                 JSONObject jlayer = jlayers.getJSONObject(i);
                 String name = jlayer.getString(KEY_BLOCK_NAME);
-                int id = Block.resolve(name);
+                int id = KnownBlockRepr.resolve(name);
                 int data = jlayer.getInt(KEY_BLOCK_DATA);
                 int count = jlayer.getInt(KEY_COUNT);
-                Block block = Block.getBestBlock(id, data);
-                alayers[i] = new Layer(block, count);
+                KnownBlockRepr block = KnownBlockRepr.getBestBlock(id, data);
+                //alayers[i] = new Layer(block, count);
             }
             layers.hasStructureOps = root.has(KEY_STRUCTURE_OPS);
             return layers;
@@ -96,8 +96,8 @@ public final class FlatLayers {
             JSONArray jlayers = new JSONArray();
             for (Layer layer : mLayers) {
                 JSONObject jlayer = new JSONObject();
-                jlayer.put(KEY_BLOCK_NAME, "minecraft:" + layer.block.str);
-                jlayer.put(KEY_BLOCK_DATA, layer.block.subId);
+                jlayer.put(KEY_BLOCK_NAME, layer.block.getIdentifier());
+                //jlayer.put(KEY_BLOCK_DATA, layer.block.subId);
                 jlayer.put(KEY_COUNT, layer.amount);
                 jlayers.put(jlayer);
             }

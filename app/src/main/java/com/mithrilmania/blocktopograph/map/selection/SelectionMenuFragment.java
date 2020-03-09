@@ -12,19 +12,6 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import com.github.florent37.expansionpanel.ExpansionLayout;
-import com.mithrilmania.blocktopograph.Log;
-import com.mithrilmania.blocktopograph.R;
-import com.mithrilmania.blocktopograph.databinding.FragSelMenuBinding;
-import com.mithrilmania.blocktopograph.map.FloatPaneFragment;
-import com.mithrilmania.blocktopograph.map.edit.EditFunction;
-import com.mithrilmania.blocktopograph.map.edit.SearchAndReplaceFragment;
-import com.mithrilmania.blocktopograph.util.UiUtil;
-
-import org.jetbrains.annotations.NotNull;
-
-import java.lang.ref.WeakReference;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -32,10 +19,24 @@ import androidx.databinding.DataBindingUtil;
 import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
 
+import com.mithrilmania.blocktopograph.Log;
+import com.mithrilmania.blocktopograph.R;
+import com.mithrilmania.blocktopograph.block.BlockRegistry;
+import com.mithrilmania.blocktopograph.databinding.FragSelMenuBinding;
+import com.mithrilmania.blocktopograph.map.FloatPaneFragment;
+import com.mithrilmania.blocktopograph.map.edit.ChBiomeFragment;
+import com.mithrilmania.blocktopograph.map.edit.EditFunction;
+import com.mithrilmania.blocktopograph.map.edit.SearchAndReplaceFragment;
+import com.mithrilmania.blocktopograph.util.UiUtil;
+
+import java.lang.ref.WeakReference;
+
 public class SelectionMenuFragment extends FloatPaneFragment {
 
     public static final String TAG_SNR = "Snr";
-    @NotNull
+    public static final String TAG_CHBIOME = "Chbiome";
+
+    @NonNull
     private final Rect mSelection = new Rect();
     private FragSelMenuBinding mBinding;
     @Nullable
@@ -43,35 +44,20 @@ public class SelectionMenuFragment extends FloatPaneFragment {
 
     private EditFunctionEntry mEditFunctionEntry;
 
+    private BlockRegistry registry;
+
     public static SelectionMenuFragment newInstance(
-            @NotNull Rect initial, @NotNull EditFunctionEntry editFunctionEntry) {
+            @NonNull Rect initial, @NonNull BlockRegistry registry, @NonNull EditFunctionEntry editFunctionEntry) {
         SelectionMenuFragment fragment = new SelectionMenuFragment();
         fragment.mSelection.set(initial);
+        fragment.registry = registry;
         fragment.mEditFunctionEntry = editFunctionEntry;
         return fragment;
     }
 
-    @Nullable
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        mBinding = DataBindingUtil.inflate(inflater, R.layout.frag_sel_menu, container, false);
-        mBinding.content.setSelection(mSelection);
-        mBinding.content.fromXText.addTextChangedListener(new MeowWatcher(mBinding.content.fromXText));
-        mBinding.content.fromYText.addTextChangedListener(new MeowWatcher(mBinding.content.fromYText));
-        mBinding.content.rangeWText.addTextChangedListener(new MeowWatcher(mBinding.content.rangeWText));
-        mBinding.content.rangeHText.addTextChangedListener(new MeowWatcher(mBinding.content.rangeHText));
-        mBinding.content.applyButton.setOnClickListener(this::onApply);
-        mBinding.content.funcLampshade.setOnClickListener(this::onChooseLampshade);
-        mBinding.content.funcSnr.setOnClickListener(this::onChooseSnr);
-        mBinding.expansionLayout.post(() -> mBinding.expansionLayout.scrollTo(0, 0));
-        if (mBinding.scroll != null)
-            mBinding.expansionLayout.addListener(this::onExpansionChanged);
-        return mBinding.getRoot();
-    }
-
-    private void onExpansionChanged(ExpansionLayout layout, boolean expanded) {
-        mBinding.scroll.setScrollY(mBinding.scroll.getChildAt(0).getMeasuredHeight());
-        mBinding.scroll.post(() -> mBinding.scroll.smoothScrollTo(0, 0));
+    private static boolean isSelectionChunkAligned(@NonNull Rect selection) {
+        return (selection.left & 0xf) == 0 && (selection.right & 0xf) == 0
+                && (selection.top & 0xf) == 0 && (selection.bottom & 0xf) == 0;
     }
 
     @Override
@@ -127,7 +113,7 @@ public class SelectionMenuFragment extends FloatPaneFragment {
         }
     }
 
-    private void onChooseLampshade(@NotNull View view) {
+    private void onChooseLampshade(@NonNull View view) {
         AlertDialog dialog = new AlertDialog.Builder(new ContextThemeWrapper(view.getContext(), R.style.AppTheme))
                 .setView(R.layout.dialog_lampshade)
                 .setTitle(R.string.map_edit_func_lampshade)
@@ -140,17 +126,68 @@ public class SelectionMenuFragment extends FloatPaneFragment {
     }
 
     private void onChooseSnr(View view) {
-        SearchAndReplaceFragment fragment = SearchAndReplaceFragment.newInstance(mEditFunctionEntry);
-        FragmentActivity activity = getActivity();
-        FragmentManager fragmentManager = null;
-        if (activity != null) fragmentManager = activity.getSupportFragmentManager();
-        if (fragmentManager == null) fragmentManager = getChildFragmentManager();
+        SearchAndReplaceFragment fragment = SearchAndReplaceFragment.newInstance(registry, mEditFunctionEntry);
+        FragmentManager fragmentManager = getMeowFragmentManager();
         fragment.show(fragmentManager, TAG_SNR);
         Log.logFirebaseEvent(view.getContext(), Log.CustomFirebaseEvent.SNR_OPEN);
     }
 
+    private void onChooseDchunk(View view) {
+        String text = getString(R.string.map_edit_dchunk_explain);
+        boolean aligned = isSelectionChunkAligned(mSelection);
+        if (!aligned)
+            text += "\n\n" + getString(R.string.map_edit_dchunk_warn_not_aligned);
+        AlertDialog dialog = new AlertDialog.Builder(new ContextThemeWrapper(view.getContext(), R.style.AppTheme))
+                .setTitle(R.string.map_edit_func_dchunk)
+                .setMessage(text)
+                .setPositiveButton(aligned ? android.R.string.ok : R.string.map_edit_dchunk_posbtn_with_auto_adjust,
+                        ((dialogInterface, i) -> mEditFunctionEntry.invokeEditFunction(EditFunction.DCHUNK, null)))
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        dialog.show();
+        Log.logFirebaseEvent(view.getContext(), Log.CustomFirebaseEvent.DCHUNK);
+    }
+
+    private void onChooseChbiome(View view) {
+        ChBiomeFragment fragment = ChBiomeFragment.newInstance(mEditFunctionEntry);
+        FragmentManager fragmentManager = getMeowFragmentManager();
+        fragment.show(fragmentManager, TAG_CHBIOME);
+        Log.logFirebaseEvent(view.getContext(), Log.CustomFirebaseEvent.CH_BIOME);
+    }
+
+    private void onChoosePicer(View view) {
+        mEditFunctionEntry.invokeEditFunction(EditFunction.PICER, null);
+    }
+
+    @NonNull
+    private FragmentManager getMeowFragmentManager() {
+        FragmentActivity activity = getActivity();
+        FragmentManager fragmentManager = null;
+        if (activity != null) fragmentManager = activity.getSupportFragmentManager();
+        if (fragmentManager == null) fragmentManager = getChildFragmentManager();
+        return fragmentManager;
+    }
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        mBinding = DataBindingUtil.inflate(inflater, R.layout.frag_sel_menu, container, false);
+        mBinding.content.setSelection(mSelection);
+        mBinding.content.fromXText.addTextChangedListener(new MeowWatcher(mBinding.content.fromXText));
+        mBinding.content.fromYText.addTextChangedListener(new MeowWatcher(mBinding.content.fromYText));
+        mBinding.content.rangeWText.addTextChangedListener(new MeowWatcher(mBinding.content.rangeWText));
+        mBinding.content.rangeHText.addTextChangedListener(new MeowWatcher(mBinding.content.rangeHText));
+        mBinding.content.applyButton.setOnClickListener(this::onApply);
+        mBinding.content.funcLampshade.setOnClickListener(this::onChooseLampshade);
+        mBinding.content.funcSnr.setOnClickListener(this::onChooseSnr);
+        mBinding.content.funcDchunk.setOnClickListener(this::onChooseDchunk);
+        mBinding.content.funcChbiome.setOnClickListener(this::onChooseChbiome);
+        mBinding.content.funcPicer.setOnClickListener(this::onChoosePicer);
+        return mBinding.getRoot();
+    }
+
     public interface EditFunctionEntry {
-        void invokeEditFunction(@NotNull EditFunction func, @Nullable Bundle args);
+        void invokeEditFunction(@NonNull EditFunction func, @Nullable Bundle args);
     }
 
     private class MeowWatcher implements TextWatcher {

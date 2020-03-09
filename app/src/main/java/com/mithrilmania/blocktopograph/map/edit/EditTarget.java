@@ -1,28 +1,35 @@
 package com.mithrilmania.blocktopograph.map.edit;
 
+import androidx.annotation.NonNull;
+
 import com.mithrilmania.blocktopograph.WorldData;
 import com.mithrilmania.blocktopograph.chunk.Chunk;
 
-import org.jetbrains.annotations.Contract;
-import org.jetbrains.annotations.NotNull;
 
 public abstract class EditTarget {
 
+    protected int mMaxError = 10;
 
     protected final boolean mIsChunkAware;
-    @NotNull
+    @NonNull
     protected final WorldData mWorldData;
 
-    protected EditTarget(boolean isChunkAware, @NotNull WorldData worldData) {
+    protected EditTarget(boolean isChunkAware, @NonNull WorldData worldData) {
         mIsChunkAware = isChunkAware;
         mWorldData = worldData;
     }
 
-    public abstract void forEachXyzd(RandomAccessEdit edit);
+    public abstract EditResultCode forEachXyz(RandomAccessEdit edit);
 
-    public abstract void forEachChunk(ChunkBasedEdit edit);
+    public abstract EditResultCode forEachXz(RandomAccessEdit edit);
 
-    @Contract(pure = true)
+    public abstract EditResultCode forEachChunk(ChunkBasedEdit edit);
+
+    public final void setMaxError(int maxError) {
+        mMaxError = maxError;
+    }
+
+
     public final boolean isChunkAware() {
         return mIsChunkAware;
     }
